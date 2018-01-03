@@ -20,6 +20,7 @@
 #include <linux/set_memory.h>
 #include <linux/kallsyms.h>
 
+#include <net/xdp.h>
 #include <net/sch_generic.h>
 
 #include <asm/byteorder.h>
@@ -657,6 +658,7 @@ struct xdp_buff {
 	void *data;
 	void *data_end;
 	void *data_hard_start;
+	struct xdp_rxq_info *rxq;
 };
 
 /* compute the linear packet data range [data, data_end) which
