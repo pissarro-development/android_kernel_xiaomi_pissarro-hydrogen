@@ -95,18 +95,34 @@ static int check_uarg_tail_zero(void __user *uaddr,
 	return 0;
 }
 
+const struct bpf_map_ops bpf_map_offload_ops = {
+	.map_alloc = bpf_map_offload_map_alloc,
+	.map_free = bpf_map_offload_map_free,
+};
+
 static struct bpf_map *find_and_alloc_map(union bpf_attr *attr)
 {
+	const struct bpf_map_ops *ops;
 	struct bpf_map *map;
+	int err;
 
-	if (attr->map_type >= ARRAY_SIZE(bpf_map_types) ||
-	    !bpf_map_types[attr->map_type])
+	if (attr->map_type >= ARRAY_SIZE(bpf_map_types))
+		return ERR_PTR(-EINVAL);
+	ops = bpf_map_types[attr->map_type];
+	if (!ops)
 		return ERR_PTR(-EINVAL);
 
-	map = bpf_map_types[attr->map_type]->map_alloc(attr);
+	if (ops->map_alloc_check) {
+		err = ops->map_alloc_check(attr);
+		if (err)
+			return ERR_PTR(err);
+	}
+	if (attr->map_ifindex)
+		ops = &bpf_map_offload_ops;
+	map = ops->map_alloc(attr);
 	if (IS_ERR(map))
 		return map;
-	map->ops = bpf_map_types[attr->map_type];
+	map->ops = ops;
 	map->map_type = attr->map_type;
 	return map;
 }
@@ -200,9 +216,17 @@ static int bpf_map_alloc_id(struct bpf_map *map)
 	return id > 0 ? 0 : id;
 }
 
-static void bpf_map_free_id(struct bpf_map *map, bool do_idr_lock)
+void bpf_map_free_id(struct bpf_map *map, bool do_idr_lock)
 {
 	unsigned long flags;
+
+	/* Offloaded maps are removed from the IDR store when their device
+	 * disappears - even if someone holds an fd to them they are unusable,
+	 * the memory is gone, all ops will fail; they are simply waiting for
+	 * refcnt to drop to be freed.
+	 */
+	if (!map->id)
+		return;
 
 	if (do_idr_lock)
 		spin_lock_irqsave(&map_idr_lock, flags);
@@ -210,6 +234,7 @@ static void bpf_map_free_id(struct bpf_map *map, bool do_idr_lock)
 		__acquire(&map_idr_lock);
 
 	idr_remove(&map_idr, map->id);
+	map->id = 0;
 
 	if (do_idr_lock)
 		spin_unlock_irqrestore(&map_idr_lock, flags);
@@ -373,6 +398,8 @@ static int bpf_obj_name_cpy(char *dst, const char *src)
 {
 	const char *end = src + BPF_OBJ_NAME_LEN;
 
+	memset(dst, 0, BPF_OBJ_NAME_LEN);
+
 	/* Copy all isalnum() and '_' char */
 	while (src < end && *src) {
 		if (!isalnum(*src) && *src != '_')
@@ -384,13 +411,10 @@ static int bpf_obj_name_cpy(char *dst, const char *src)
 	if (src == end)
 		return -EINVAL;
 
-	/* '\0' terminates dst */
-	*dst = 0;
-
 	return 0;
 }
 
-#define BPF_MAP_CREATE_LAST_FIELD numa_node
+#define BPF_MAP_CREATE_LAST_FIELD map_ifindex
 /* called via syscall */
 static int map_create(union bpf_attr *attr)
 {
@@ -416,6 +440,10 @@ static int map_create(union bpf_attr *attr)
 	map = find_and_alloc_map(attr);
 	if (IS_ERR(map))
 		return PTR_ERR(map);
+
+	err = bpf_obj_name_cpy(map->name, attr->map_name);
+	if (err)
+		goto free_map_nouncharge;
 
 	atomic_set(&map->refcnt, 1);
 	atomic_set(&map->usercnt, 1);
@@ -574,8 +602,10 @@ static int map_lookup_elem(union bpf_attr *attr)
 	if (!value)
 		goto free_key;
 
-	if (map->map_type == BPF_MAP_TYPE_PERCPU_HASH ||
-	    map->map_type == BPF_MAP_TYPE_LRU_PERCPU_HASH) {
+	if (bpf_map_is_dev_bound(map)) {
+		err = bpf_map_offload_lookup_elem(map, key, value);
+	} else if (map->map_type == BPF_MAP_TYPE_PERCPU_HASH ||
+		   map->map_type == BPF_MAP_TYPE_LRU_PERCPU_HASH) {
 		err = bpf_percpu_hash_copy(map, key, value);
 	} else if (map->map_type == BPF_MAP_TYPE_PERCPU_ARRAY) {
 		err = bpf_percpu_array_copy(map, key, value);
@@ -675,6 +705,15 @@ static int map_update_elem(union bpf_attr *attr)
 	if (copy_from_user(value, uvalue, value_size) != 0)
 		goto free_value;
 
+	/* Need to create a kthread, thus must support schedule */
+	if (bpf_map_is_dev_bound(map)) {
+		err = bpf_map_offload_update_elem(map, key, value, attr->flags);
+		goto out;
+	} else if (map->map_type == BPF_MAP_TYPE_CPUMAP) {
+		err = map->ops->map_update_elem(map, key, value, attr->flags);
+		goto out;
+	}
+
 	/* must increment bpf_prog_active to avoid kprobe+bpf triggering from
 	 * inside bpf map update or delete otherwise deadlocks are possible
 	 */
@@ -706,7 +745,7 @@ static int map_update_elem(union bpf_attr *attr)
 	__this_cpu_dec(bpf_prog_active);
 	preempt_enable();
 	maybe_wait_bpf_programs(map);
-
+out:
 	if (!err)
 		trace_bpf_map_update_elem(map, ufd, key, value);
 free_value:
@@ -748,6 +787,11 @@ static int map_delete_elem(union bpf_attr *attr)
 		goto err_put;
 	}
 
+	if (bpf_map_is_dev_bound(map)) {
+		err = bpf_map_offload_delete_elem(map, key);
+		goto out;
+	}
+
 	preempt_disable();
 	__this_cpu_inc(bpf_prog_active);
 	rcu_read_lock();
@@ -756,7 +800,7 @@ static int map_delete_elem(union bpf_attr *attr)
 	__this_cpu_dec(bpf_prog_active);
 	preempt_enable();
 	maybe_wait_bpf_programs(map);
-
+out:
 	if (!err)
 		trace_bpf_map_delete_elem(map, ufd, key);
 	kfree(key);
@@ -806,9 +850,15 @@ static int map_get_next_key(union bpf_attr *attr)
 	if (!next_key)
 		goto free_key;
 
+	if (bpf_map_is_dev_bound(map)) {
+		err = bpf_map_offload_get_next_key(map, key, next_key);
+		goto out;
+	}
+
 	rcu_read_lock();
 	err = map->ops->map_get_next_key(map, key, next_key);
 	rcu_read_unlock();
+out:
 	if (err)
 		goto free_next_key;
 
@@ -828,9 +878,9 @@ err_put:
 	return err;
 }
 
-static const struct bpf_verifier_ops * const bpf_prog_types[] = {
-#define BPF_PROG_TYPE(_id, _ops) \
-	[_id] = &_ops,
+static const struct bpf_prog_ops * const bpf_prog_types[] = {
+#define BPF_PROG_TYPE(_id, _name) \
+	[_id] = & _name ## _prog_ops,
 #define BPF_MAP_TYPE(_id, _ops)
 #include <linux/bpf_types.h>
 #undef BPF_PROG_TYPE
@@ -960,10 +1010,16 @@ static void __bpf_prog_put_rcu(struct rcu_head *rcu)
 static void __bpf_prog_put(struct bpf_prog *prog, bool do_idr_lock)
 {
 	if (atomic_dec_and_test(&prog->aux->refcnt)) {
+		int i;
+
 		trace_bpf_prog_put_rcu(prog);
 		/* bpf_prog_free_id() must be called first */
 		bpf_prog_free_id(prog, do_idr_lock);
+
+		for (i = 0; i < prog->aux->func_cnt; i++)
+			bpf_prog_kallsyms_del(prog->aux->func[i]);
 		bpf_prog_kallsyms_del(prog);
+
 		call_rcu(&prog->aux->rcu, __bpf_prog_put_rcu);
 	}
 }
@@ -1080,7 +1136,23 @@ struct bpf_prog *bpf_prog_inc_not_zero(struct bpf_prog *prog)
 }
 EXPORT_SYMBOL_GPL(bpf_prog_inc_not_zero);
 
-static struct bpf_prog *__bpf_prog_get(u32 ufd, enum bpf_prog_type *attach_type)
+bool bpf_prog_get_ok(struct bpf_prog *prog,
+			    enum bpf_prog_type *attach_type, bool attach_drv)
+{
+	/* not an attachment, just a refcount inc, always allow */
+	if (!attach_type)
+		return true;
+
+	if (prog->type != *attach_type)
+		return false;
+	if (bpf_prog_is_dev_bound(prog->aux) && !attach_drv)
+		return false;
+
+	return true;
+}
+
+static struct bpf_prog *__bpf_prog_get(u32 ufd, enum bpf_prog_type *attach_type,
+				       bool attach_drv)
 {
 	struct fd f = fdget(ufd);
 	struct bpf_prog *prog;
@@ -1088,7 +1160,7 @@ static struct bpf_prog *__bpf_prog_get(u32 ufd, enum bpf_prog_type *attach_type)
 	prog = ____bpf_prog_get(f);
 	if (IS_ERR(prog))
 		return prog;
-	if (attach_type && (prog->type != *attach_type || prog->aux->offload)) {
+	if (!bpf_prog_get_ok(prog, attach_type, attach_drv)) {
 		prog = ERR_PTR(-EINVAL);
 		goto out;
 	}
@@ -1101,18 +1173,19 @@ out:
 
 struct bpf_prog *bpf_prog_get(u32 ufd)
 {
-	return __bpf_prog_get(ufd, NULL);
+	return __bpf_prog_get(ufd, NULL, false);
 }
 
-struct bpf_prog *bpf_prog_get_type(u32 ufd, enum bpf_prog_type type)
+struct bpf_prog *bpf_prog_get_type_dev(u32 ufd, enum bpf_prog_type type,
+				       bool attach_drv)
 {
-	struct bpf_prog *prog = __bpf_prog_get(ufd, &type);
+	struct bpf_prog *prog = __bpf_prog_get(ufd, &type, attach_drv);
 
 	if (!IS_ERR(prog))
 		trace_bpf_prog_get_type(prog);
 	return prog;
 }
-EXPORT_SYMBOL_GPL(bpf_prog_get_type);
+EXPORT_SYMBOL_GPL(bpf_prog_get_type_dev);
 
 /* last field in 'union bpf_attr' used by this command */
 #define	BPF_PROG_LOAD_LAST_FIELD prog_ifindex
@@ -1157,6 +1230,8 @@ static int bpf_prog_load(union bpf_attr *attr)
 	if (!prog)
 		return -ENOMEM;
 
+	prog->aux->offload_requested = !!attr->prog_ifindex;
+
 	err = security_bpf_prog_alloc(prog->aux);
 	if (err)
 		goto free_prog_nouncharge;
@@ -1178,7 +1253,7 @@ static int bpf_prog_load(union bpf_attr *attr)
 	atomic_set(&prog->aux->refcnt, 1);
 	prog->gpl_compatible = is_gpl ? 1 : 0;
 
-	if (attr->prog_ifindex) {
+	if (bpf_prog_is_dev_bound(prog->aux)) {
 		err = bpf_prog_offload_init(prog, attr);
 		if (err)
 			goto free_prog;
@@ -1200,7 +1275,8 @@ static int bpf_prog_load(union bpf_attr *attr)
 		goto free_used_maps;
 
 	/* eBPF program is ready to be JITed */
-	prog = bpf_prog_select_runtime(prog, &err);
+	if (!prog->bpf_func)
+		prog = bpf_prog_select_runtime(prog, &err);
 	if (err < 0)
 		goto free_used_maps;
 
@@ -1329,6 +1405,9 @@ static int bpf_prog_attach(const union bpf_attr *attr)
 	case BPF_CGROUP_SOCK_OPS:
 		ptype = BPF_PROG_TYPE_SOCK_OPS;
 		break;
+	case BPF_CGROUP_DEVICE:
+		ptype = BPF_PROG_TYPE_CGROUP_DEVICE;
+		break;
 	case BPF_SK_SKB_STREAM_PARSER:
 	case BPF_SK_SKB_STREAM_VERDICT:
 		return sockmap_get_from_fd(attr, true);
@@ -1381,6 +1460,9 @@ static int bpf_prog_detach(const union bpf_attr *attr)
 	case BPF_CGROUP_SOCK_OPS:
 		ptype = BPF_PROG_TYPE_SOCK_OPS;
 		break;
+	case BPF_CGROUP_DEVICE:
+		ptype = BPF_PROG_TYPE_CGROUP_DEVICE;
+		break;
 	case BPF_SK_SKB_STREAM_PARSER:
 	case BPF_SK_SKB_STREAM_VERDICT:
 		return sockmap_get_from_fd(attr, false);
@@ -1403,6 +1485,38 @@ static int bpf_prog_detach(const union bpf_attr *attr)
 	return ret;
 }
 
+#define BPF_PROG_QUERY_LAST_FIELD query.prog_cnt
+
+static int bpf_prog_query(const union bpf_attr *attr,
+			  union bpf_attr __user *uattr)
+{
+	struct cgroup *cgrp;
+	int ret;
+
+	if (!capable(CAP_NET_ADMIN))
+		return -EPERM;
+	if (CHECK_ATTR(BPF_PROG_QUERY))
+		return -EINVAL;
+	if (attr->query.query_flags & ~BPF_F_QUERY_EFFECTIVE)
+		return -EINVAL;
+
+	switch (attr->query.attach_type) {
+	case BPF_CGROUP_INET_INGRESS:
+	case BPF_CGROUP_INET_EGRESS:
+	case BPF_CGROUP_INET_SOCK_CREATE:
+	case BPF_CGROUP_SOCK_OPS:
+	case BPF_CGROUP_DEVICE:
+		break;
+	default:
+		return -EINVAL;
+	}
+	cgrp = cgroup_get_from_fd(attr->query.target_fd);
+	if (IS_ERR(cgrp))
+		return PTR_ERR(cgrp);
+	ret = cgroup_bpf_query(cgrp, attr, uattr);
+	cgroup_put(cgrp);
+	return ret;
+}
 #endif /* CONFIG_CGROUP_BPF */
 
 #define BPF_PROG_TEST_RUN_LAST_FIELD test.duration
@@ -1619,7 +1733,7 @@ static int bpf_prog_get_info_by_fd(struct bpf_prog *prog,
 	info.nr_map_ids = prog->aux->used_map_cnt;
 	ulen = min_t(u32, info.nr_map_ids, ulen);
 	if (ulen) {
-		u32 *user_map_ids = (u32 *)info.map_ids;
+		u32 __user *user_map_ids = u64_to_user_ptr(info.map_ids);
 		u32 i;
 
 		for (i = 0; i < ulen; i++)
@@ -1703,6 +1817,7 @@ static int bpf_map_get_info_by_fd(struct bpf_map *map,
 	info.value_size = map->value_size;
 	info.max_entries = map->max_entries;
 	info.map_flags = map->map_flags;
+	memcpy(info.name, map->name, sizeof(map->name));
 
 	if (copy_to_user(uinfo, &info, info_len) ||
 	    put_user(info_len, &uattr->info.info_len))
@@ -1793,6 +1908,9 @@ SYSCALL_DEFINE3(bpf, int, cmd, union bpf_attr __user *, uattr, unsigned int, siz
 		break;
 	case BPF_PROG_DETACH:
 		err = bpf_prog_detach(&attr);
+		break;
+	case BPF_PROG_QUERY:
+		err = bpf_prog_query(&attr, uattr);
 		break;
 #endif
 	case BPF_PROG_TEST_RUN:
