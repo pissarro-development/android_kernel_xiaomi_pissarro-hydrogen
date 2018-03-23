@@ -168,23 +168,16 @@ struct bpf_call_arg_meta {
 
 static DEFINE_MUTEX(bpf_verifier_lock);
 
-/* log_level controls verbosity level of eBPF verifier.
- * verbose() is used to dump the verification trace to the log, so the user
- * can figure out what's wrong with the program
- */
-static __printf(2, 3) void verbose(struct bpf_verifier_env *env,
-				   const char *fmt, ...)
+static void log_write(struct bpf_verifier_env *env, const char *fmt,
+		      va_list args)
 {
 	struct bpf_verifer_log *log = &env->log;
 	unsigned int n;
-	va_list args;
 
 	if (!log->level || !log->ubuf || bpf_verifier_log_full(log))
 		return;
 
-	va_start(args, fmt);
 	n = vscnprintf(log->kbuf, BPF_VERIFIER_TMP_LOG_SIZE, fmt, args);
-	va_end(args);
 
 	WARN_ONCE(n >= BPF_VERIFIER_TMP_LOG_SIZE - 1,
 		  "verifier log line truncated - local buffer too short\n");
@@ -196,6 +189,30 @@ static __printf(2, 3) void verbose(struct bpf_verifier_env *env,
 		log->len_used += n;
 	else
 		log->ubuf = NULL;
+}
+
+/* log_level controls verbosity level of eBPF verifier.
+ * bpf_verifier_log_write() is used to dump the verification trace to the log,
+ * so the user can figure out what's wrong with the program
+ */
+__printf(2, 3) void bpf_verifier_log_write(struct bpf_verifier_env *env,
+					   const char *fmt, ...)
+{
+	va_list args;
+
+	va_start(args, fmt);
+	log_write(env, fmt, args);
+	va_end(args);
+}
+EXPORT_SYMBOL_GPL(bpf_verifier_log_write);
+
+__printf(2, 3) static void verbose(void *private_data, const char *fmt, ...)
+{
+	va_list args;
+
+	va_start(args, fmt);
+	log_write(private_data, fmt, args);
+	va_end(args);
 }
 
 static bool type_is_pkt_pointer(enum bpf_reg_type type)
@@ -375,6 +392,8 @@ static int realloc_func_state(struct bpf_func_state *state, int size,
 
 static void free_func_state(struct bpf_func_state *state)
 {
+	if (!state)
+		return;
 	kfree(state->stack);
 	kfree(state);
 }
@@ -490,6 +509,8 @@ static struct bpf_verifier_state *push_stack(struct bpf_verifier_env *env,
 	}
 	return &elem->st;
 err:
+	free_verifier_state(env->cur_state, true);
+	env->cur_state = NULL;
 	/* pop all elements and return */
 	while (!pop_stack(env, NULL, NULL));
 	return NULL;
@@ -498,10 +519,6 @@ err:
 #define CALLER_SAVED_REGS 6
 static const int caller_saved[CALLER_SAVED_REGS] = {
 	BPF_REG_0, BPF_REG_1, BPF_REG_2, BPF_REG_3, BPF_REG_4, BPF_REG_5
-};
-#define CALLEE_SAVED_REGS 5
-static const int callee_saved[CALLEE_SAVED_REGS] = {
-	BPF_REG_6, BPF_REG_7, BPF_REG_8, BPF_REG_9
 };
 
 static void __mark_reg_not_init(struct bpf_reg_state *reg);
@@ -1507,33 +1524,80 @@ static int update_stack_depth(struct bpf_verifier_env *env,
 			      const struct bpf_func_state *func,
 			      int off)
 {
-	u16 stack = env->subprog_stack_depth[func->subprogno], total = 0;
-	struct bpf_verifier_state *cur = env->cur_state;
-	int i;
+	u16 stack = env->subprog_stack_depth[func->subprogno];
 
 	if (stack >= -off)
 		return 0;
 
 	/* update known max for given subprogram */
 	env->subprog_stack_depth[func->subprogno] = -off;
+	return 0;
+}
 
-	/* compute the total for current call chain */
-	for (i = 0; i <= cur->curframe; i++) {
-		u32 depth = env->subprog_stack_depth[cur->frame[i]->subprogno];
+/* starting from main bpf function walk all instructions of the function
+ * and recursively walk all callees that given function can call.
+ * Ignore jump and exit insns.
+ * Since recursion is prevented by check_cfg() this algorithm
+ * only needs a local stack of MAX_CALL_FRAMES to remember callsites
+ */
+static int check_max_stack_depth(struct bpf_verifier_env *env)
+{
+	int depth = 0, frame = 0, subprog = 0, i = 0, subprog_end;
+	struct bpf_insn *insn = env->prog->insnsi;
+	int insn_cnt = env->prog->len;
+	int ret_insn[MAX_CALL_FRAMES];
+	int ret_prog[MAX_CALL_FRAMES];
 
-		/* round up to 32-bytes, since this is granularity
-		 * of interpreter stack sizes
-		 */
-		depth = round_up(depth, 32);
-		total += depth;
-	}
-
-	if (total > MAX_BPF_STACK) {
+process_func:
+	/* round up to 32-bytes, since this is granularity
+	 * of interpreter stack size
+	 */
+	depth += round_up(max_t(u32, env->subprog_stack_depth[subprog], 1), 32);
+	if (depth > MAX_BPF_STACK) {
 		verbose(env, "combined stack size of %d calls is %d. Too large\n",
-			cur->curframe, total);
+			frame + 1, depth);
 		return -EACCES;
 	}
-	return 0;
+continue_func:
+	if (env->subprog_cnt == subprog)
+		subprog_end = insn_cnt;
+	else
+		subprog_end = env->subprog_starts[subprog];
+	for (; i < subprog_end; i++) {
+		if (insn[i].code != (BPF_JMP | BPF_CALL))
+			continue;
+		if (insn[i].src_reg != BPF_PSEUDO_CALL)
+			continue;
+		/* remember insn and function to return to */
+		ret_insn[frame] = i + 1;
+		ret_prog[frame] = subprog;
+
+		/* find the callee */
+		i = i + insn[i].imm + 1;
+		subprog = find_subprog(env, i);
+		if (subprog < 0) {
+			WARN_ONCE(1, "verifier bug. No program starts at insn %d\n",
+				  i);
+			return -EFAULT;
+		}
+		subprog++;
+		frame++;
+		if (frame >= MAX_CALL_FRAMES) {
+			WARN_ONCE(1, "verifier bug. Call stack is too deep\n");
+			return -EFAULT;
+		}
+		goto process_func;
+	}
+	/* end of for() loop means the last insn of the 'subprog'
+	 * was reached. Doesn't matter whether it was JA or EXIT
+	 */
+	if (frame == 0)
+		return 0;
+	depth -= round_up(max_t(u32, env->subprog_stack_depth[subprog], 1), 32);
+	frame--;
+	i = ret_insn[frame];
+	subprog = ret_prog[frame];
+	goto continue_func;
 }
 
 #ifndef CONFIG_BPF_JIT_ALWAYS_ON
@@ -2189,9 +2253,9 @@ static int check_func_call(struct bpf_verifier_env *env, struct bpf_insn *insn,
 	struct bpf_func_state *caller, *callee;
 	int i, subprog, target_insn;
 
-	if (state->curframe >= MAX_CALL_FRAMES) {
+	if (state->curframe + 1 >= MAX_CALL_FRAMES) {
 		verbose(env, "the call stack of %d frames is too deep\n",
-			state->curframe);
+			state->curframe + 2);
 		return -E2BIG;
 	}
 
@@ -4551,7 +4615,7 @@ static bool stacksafe(struct bpf_func_state *old,
 
 		if (!(old->stack[spi].spilled_ptr.live & REG_LIVE_READ))
 			/* explored state didn't use this */
-			return true;
+			continue;
 
 		if (old->stack[spi].slot_type[i % BPF_REG_SIZE] == STACK_INVALID)
 			continue;
@@ -4874,10 +4938,11 @@ static int do_check(struct bpf_verifier_env *env)
 		if (env->log.level) {
 			const struct bpf_insn_cbs cbs = {
 				.cb_print	= verbose,
+				.private_data	= env,
 			};
 
 			verbose(env, "%d: ", env->insn_idx);
-			print_bpf_insn(&cbs, env, insn, env->allow_ptr_leaks);
+			print_bpf_insn(&cbs, insn, env->allow_ptr_leaks);
 		}
 
 		if (bpf_prog_is_dev_bound(env->prog->aux)) {
@@ -5118,7 +5183,8 @@ process_bpf_exit:
 		env->insn_idx++;
 	}
 
-	verbose(env, "processed %d insns, stack depth ", insn_processed);
+	verbose(env, "processed %d insns (limit %d), stack depth ",
+		insn_processed, BPF_COMPLEXITY_LIMIT_INSNS);
 	for (i = 0; i < env->subprog_cnt + 1; i++) {
 		u32 depth = env->subprog_stack_depth[i];
 
@@ -5264,6 +5330,13 @@ static int replace_map_fd_with_map_ptr(struct bpf_verifier_env *env)
 next_insn:
 			insn++;
 			i++;
+			continue;
+		}
+
+		/* Basic sanity check before we invest more work here. */
+		if (!bpf_opcode_in_insntable(insn->code)) {
+			verbose(env, "unknown opcode %02x\n", insn->code);
+			return -EINVAL;
 		}
 	}
 
@@ -5347,14 +5420,21 @@ static struct bpf_prog *bpf_patch_insn_data(struct bpf_verifier_env *env, u32 of
 	return new_prog;
 }
 
-/* The verifier does more data flow analysis than llvm and will not explore
- * branches that are dead at run time. Malicious programs can have dead code
- * too. Therefore replace all dead at-run-time code with nops.
+/* The verifier does more data flow analysis than llvm and will not
+ * explore branches that are dead at run time. Malicious programs can
+ * have dead code too. Therefore replace all dead at-run-time code
+ * with 'ja -1'.
+ *
+ * Just nops are not optimal, e.g. if they would sit at the end of the
+ * program and through another bug we would manage to jump there, then
+ * we'd execute beyond program memory otherwise. Returning exception
+ * code also wouldn't work since we can have subprogs where the dead
+ * code could be located.
  */
 static void sanitize_dead_code(struct bpf_verifier_env *env)
 {
 	struct bpf_insn_aux_data *aux_data = env->insn_aux_data;
-	struct bpf_insn nop = BPF_MOV64_REG(BPF_REG_0, BPF_REG_0);
+	struct bpf_insn trap = BPF_JMP_IMM(BPF_JA, 0, 0, -1);
 	struct bpf_insn *insn = env->prog->insnsi;
 	const int insn_cnt = env->prog->len;
 	int i;
@@ -5362,7 +5442,7 @@ static void sanitize_dead_code(struct bpf_verifier_env *env)
 	for (i = 0; i < insn_cnt; i++) {
 		if (aux_data[i].seen)
 			continue;
-		memcpy(insn + i, &nop, sizeof(nop));
+		memcpy(insn + i, &trap, sizeof(trap));
 	}
 }
 
@@ -5824,7 +5904,7 @@ static int fixup_bpf_calls(struct bpf_verifier_env *env)
 			 */
 			map_ptr = env->insn_aux_data[i + delta].map_ptr;
 			if (map_ptr == BPF_MAP_PTR_POISON) {
-				verbose(env, "tail_call obusing map_ptr\n");
+				verbose(env, "tail_call abusing map_ptr\n");
 				return -EINVAL;
 			}
 			if (!map_ptr->unpriv_array)
@@ -6020,6 +6100,9 @@ skip_full_check:
 
 	if (ret == 0)
 		sanitize_dead_code(env);
+
+	if (ret == 0)
+		ret = check_max_stack_depth(env);
 
 	if (ret == 0)
 		/* program is valid, convert *(u32*)(ctx + off) accesses */
