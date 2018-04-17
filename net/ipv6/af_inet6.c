@@ -279,13 +279,10 @@ out_rcu_unlock:
 	goto out;
 }
 
-
-/* bind for INET6 API */
-int inet6_bind(struct socket *sock, struct sockaddr *uaddr, int addr_len)
+static int __inet6_bind(struct sock *sk, struct sockaddr *uaddr, int addr_len,
+			bool force_bind_address_no_port, bool with_lock)
 {
 	struct sockaddr_in6 *addr = (struct sockaddr_in6 *)uaddr;
-	struct sock *sk = sock->sk;
-	const struct proto *prot;
 	struct inet_sock *inet = inet_sk(sk);
 	struct ipv6_pinfo *np = inet6_sk(sk);
 	struct net *net = sock_net(sk);
@@ -295,20 +292,11 @@ int inet6_bind(struct socket *sock, struct sockaddr *uaddr, int addr_len)
 	int addr_type = 0;
 	int err = 0;
 
-	/* IPV6_ADDRFORM can change sk->sk_prot under us. */
-	prot = READ_ONCE(sk->sk_prot);
-	/* If the socket has its own bind function then use it. */
-	if (prot->bind)
-		return prot->bind(sk, uaddr, addr_len);
-
-	if (addr_len < SIN6_LEN_RFC2133)
-		return -EINVAL;
-
 	if (addr->sin6_family != AF_INET6)
 		return -EAFNOSUPPORT;
 
 	addr_type = ipv6_addr_type(&addr->sin6_addr);
-	if ((addr_type & IPV6_ADDR_MULTICAST) && sock->type == SOCK_STREAM)
+	if ((addr_type & IPV6_ADDR_MULTICAST) && sk->sk_type == SOCK_STREAM)
 		return -EINVAL;
 
 	snum = ntohs(addr->sin6_port);
@@ -440,6 +428,33 @@ out:
 out_unlock:
 	rcu_read_unlock();
 	goto out;
+}
+EXPORT_SYMBOL(inet6_bind);
+
+/* bind for INET6 API */
+int inet6_bind(struct socket *sock, struct sockaddr *uaddr, int addr_len)
+{
+	struct sock *sk = sock->sk;
+	const struct proto *prot;
+	int err = 0;
+
+	/* IPV6_ADDRFORM can change sk->sk_prot under us. */
+	prot = READ_ONCE(sk->sk_prot);
+	/* If the socket has its own bind function then use it. */
+	if (prot->bind)
+		return prot->bind(sk, uaddr, addr_len);
+
+	if (addr_len < SIN6_LEN_RFC2133)
+		return -EINVAL;
+
+	/* BPF prog is run before any checks are done so that if the prog
+	 * changes context in a wrong way it will be caught.
+	 */
+	err = BPF_CGROUP_RUN_PROG_INET6_BIND(sk, uaddr);
+	if (err)
+		return err;
+
+	return __inet6_bind(sk, uaddr, addr_len, false, true);
 }
 EXPORT_SYMBOL(inet6_bind);
 
