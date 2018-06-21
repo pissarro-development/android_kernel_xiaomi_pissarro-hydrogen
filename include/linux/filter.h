@@ -552,8 +552,9 @@ struct bpf_binary_header {
 #ifdef CONFIG_CFI_CLANG
 	u32 magic;
 #endif
-	unsigned int pages;
-	u8 image[];
+	u32 pages;
+	/* Some arches need word alignment for their instructions */
+	u8 image[] __aligned(4);
 };
 
 struct bpf_prog {
