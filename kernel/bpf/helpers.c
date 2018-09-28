@@ -191,3 +191,41 @@ const struct bpf_func_proto bpf_get_current_comm_proto = {
 	.arg1_type	= ARG_PTR_TO_UNINIT_MEM,
 	.arg2_type	= ARG_CONST_SIZE,
 };
+
+#ifdef CONFIG_CGROUPS
+BPF_CALL_0(bpf_get_current_cgroup_id)
+{
+	struct cgroup *cgrp = task_dfl_cgroup(current);
+
+	return cgrp->kn->id.id;
+}
+
+const struct bpf_func_proto bpf_get_current_cgroup_id_proto = {
+	.func		= bpf_get_current_cgroup_id,
+	.gpl_only	= false,
+	.ret_type	= RET_INTEGER,
+};
+
+#ifdef CONFIG_CGROUP_BPF
+DECLARE_PER_CPU(void*, bpf_cgroup_storage[MAX_BPF_CGROUP_STORAGE_TYPE]);
+
+BPF_CALL_2(bpf_get_local_storage, struct bpf_map *, map, u64, flags)
+{
+	/* flags argument is not used now,
+	 * but provides an ability to extend the API.
+	 * verifier checks that its value is correct.
+	 */
+	enum bpf_cgroup_storage_type stype = cgroup_storage_type(map);
+
+	return (unsigned long) this_cpu_read(bpf_cgroup_storage[stype]);
+}
+
+const struct bpf_func_proto bpf_get_local_storage_proto = {
+	.func		= bpf_get_local_storage,
+	.gpl_only	= false,
+	.ret_type	= RET_PTR_TO_MAP_VALUE,
+	.arg1_type	= ARG_CONST_MAP_PTR,
+	.arg2_type	= ARG_ANYTHING,
+};
+#endif
+#endif
