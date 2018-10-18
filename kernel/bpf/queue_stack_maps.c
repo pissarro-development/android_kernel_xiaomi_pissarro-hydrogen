@@ -7,11 +7,11 @@
 #include <linux/bpf.h>
 #include <linux/list.h>
 #include <linux/slab.h>
-#include <linux/capability.h>
 #include "percpu_freelist.h"
 
 #define QUEUE_STACK_CREATE_FLAG_MASK \
-	(BPF_F_NUMA_NODE | BPF_F_ACCESS_MASK)
+	(BPF_F_NUMA_NODE | BPF_F_RDONLY | BPF_F_WRONLY)
+
 
 struct bpf_queue_stack {
 	struct bpf_map map;
@@ -45,14 +45,9 @@ static bool queue_stack_map_is_full(struct bpf_queue_stack *qs)
 /* Called from syscall */
 static int queue_stack_map_alloc_check(union bpf_attr *attr)
 {
-	if (!capable(CAP_SYS_ADMIN))
-		return -EPERM;
-
 	/* check sanity of attributes */
 	if (attr->max_entries == 0 || attr->key_size != 0 ||
-	    attr->value_size == 0 ||
-	    attr->map_flags & ~QUEUE_STACK_CREATE_FLAG_MASK ||
-	    !bpf_map_flags_access_ok(attr->map_flags))
+	    attr->map_flags & ~QUEUE_STACK_CREATE_FLAG_MASK)
 		return -EINVAL;
 
 	if (attr->value_size > KMALLOC_MAX_SIZE)
@@ -67,28 +62,34 @@ static int queue_stack_map_alloc_check(union bpf_attr *attr)
 static struct bpf_map *queue_stack_map_alloc(union bpf_attr *attr)
 {
 	int ret, numa_node = bpf_map_attr_numa_node(attr);
-	struct bpf_map_memory mem = {0};
 	struct bpf_queue_stack *qs;
-	u64 size, queue_size, cost;
+	u32 size, value_size;
+	u64 queue_size, cost;
 
-	size = (u64) attr->max_entries + 1;
-	cost = queue_size = sizeof(*qs) + size * attr->value_size;
+	size = attr->max_entries + 1;
+	value_size = attr->value_size;
 
-	ret = bpf_map_charge_init(&mem, cost);
+	queue_size = sizeof(*qs) + (u64) value_size * size;
+
+	cost = queue_size;
+	if (cost >= U32_MAX - PAGE_SIZE)
+		return ERR_PTR(-E2BIG);
+
+	cost = round_up(cost, PAGE_SIZE) >> PAGE_SHIFT;
+
+	ret = bpf_map_precharge_memlock(cost);
 	if (ret < 0)
 		return ERR_PTR(ret);
 
 	qs = bpf_map_area_alloc(queue_size, numa_node);
-	if (!qs) {
-		bpf_map_charge_finish(&mem);
+	if (!qs)
 		return ERR_PTR(-ENOMEM);
-	}
 
 	memset(qs, 0, sizeof(*qs));
 
 	bpf_map_init_from_attr(&qs->map, attr);
 
-	bpf_map_charge_move(&qs->map.memory, &mem);
+	qs->map.pages = cost;
 	qs->size = size;
 
 	raw_spin_lock_init(&qs->lock);
@@ -118,15 +119,9 @@ static int __queue_map_get(struct bpf_map *map, void *value, bool delete)
 	int err = 0;
 	void *ptr;
 
-	if (in_nmi()) {
-		if (!raw_spin_trylock_irqsave(&qs->lock, flags))
-			return -EBUSY;
-	} else {
-		raw_spin_lock_irqsave(&qs->lock, flags);
-	}
+	raw_spin_lock_irqsave(&qs->lock, flags);
 
 	if (queue_stack_map_is_empty(qs)) {
-		memset(value, 0, qs->map.value_size);
 		err = -ENOENT;
 		goto out;
 	}
@@ -153,15 +148,9 @@ static int __stack_map_get(struct bpf_map *map, void *value, bool delete)
 	void *ptr;
 	u32 index;
 
-	if (in_nmi()) {
-		if (!raw_spin_trylock_irqsave(&qs->lock, flags))
-			return -EBUSY;
-	} else {
-		raw_spin_lock_irqsave(&qs->lock, flags);
-	}
+	raw_spin_lock_irqsave(&qs->lock, flags);
 
 	if (queue_stack_map_is_empty(qs)) {
-		memset(value, 0, qs->map.value_size);
 		err = -ENOENT;
 		goto out;
 	}
@@ -223,12 +212,7 @@ static int queue_stack_map_push_elem(struct bpf_map *map, void *value,
 	if (flags & BPF_NOEXIST || flags > BPF_EXIST)
 		return -EINVAL;
 
-	if (in_nmi()) {
-		if (!raw_spin_trylock_irqsave(&qs->lock, irq_flags))
-			return -EBUSY;
-	} else {
-		raw_spin_lock_irqsave(&qs->lock, irq_flags);
-	}
+	raw_spin_lock_irqsave(&qs->lock, irq_flags);
 
 	if (queue_stack_map_is_full(qs)) {
 		if (!replace) {
