@@ -21,17 +21,20 @@
  * Kris Katterjohn - Added many additional checks in bpf_check_classic()
  */
 
+#include <uapi/linux/btf.h>
 #include <linux/filter.h>
 #include <linux/skbuff.h>
 #include <linux/vmalloc.h>
 #include <linux/random.h>
 #include <linux/moduleloader.h>
 #include <linux/bpf.h>
+#include <linux/btf.h>
 #include <linux/frame.h>
 #include <linux/rbtree_latch.h>
 #include <linux/kallsyms.h>
 #include <linux/rcupdate.h>
 #include <linux/perf_event.h>
+#include <linux/nospec.h>
 
 #include <asm/barrier.h>
 #include <asm/unaligned.h>
@@ -393,6 +396,8 @@ bpf_get_prog_addr_region(const struct bpf_prog *prog,
 static void bpf_get_prog_name(const struct bpf_prog *prog, char *sym)
 {
 	const char *end = sym + KSYM_NAME_LEN;
+	const struct btf_type *type;
+	const char *func_name;
 
 	BUILD_BUG_ON(sizeof("bpf_prog_") +
 		     sizeof(prog->tag) * 2 +
@@ -407,6 +412,15 @@ static void bpf_get_prog_name(const struct bpf_prog *prog, char *sym)
 
 	sym += snprintf(sym, KSYM_NAME_LEN, "bpf_prog_");
 	sym  = bin2hex(sym, prog->tag, sizeof(prog->tag));
+
+	/* prog->aux->name will be ignored if full btf name is available */
+	if (prog->aux->btf) {
+		type = btf_type_by_id(prog->aux->btf, prog->aux->type_id);
+		func_name = btf_name_by_offset(prog->aux->btf, type->name_off);
+		snprintf(sym, (size_t)(end - sym), "_%s", func_name);
+		return;
+	}
+
 	if (prog->aux->name[0])
 		snprintf(sym, (size_t)(end - sym), "_%s", prog->aux->name);
 	else
@@ -556,7 +570,6 @@ bool is_bpf_text_address(unsigned long addr)
 int bpf_get_kallsym(unsigned int symnum, unsigned long *value, char *type,
 		    char *sym)
 {
-	unsigned long symbol_start, symbol_end;
 	struct bpf_prog_aux *aux;
 	unsigned int it = 0;
 	int ret = -ERANGE;
@@ -569,10 +582,9 @@ int bpf_get_kallsym(unsigned int symnum, unsigned long *value, char *type,
 		if (it++ != symnum)
 			continue;
 
-		bpf_get_prog_addr_region(aux->prog, &symbol_start, &symbol_end);
 		bpf_get_prog_name(aux->prog, sym);
 
-		*value = symbol_start;
+		*value = (unsigned long)aux->prog->bpf_func;
 		*type  = BPF_SYM_ELF_TYPE;
 
 		ret = 0;
@@ -1382,9 +1394,7 @@ out:
 		 * reuse preexisting logic from Spectre v1 mitigation that
 		 * happens to produce the required code on x86 for v4 as well.
 		 */
-#ifdef CONFIG_X86
 		barrier_nospec();
-#endif
 		CONT;
 #define LDST(SIZEOP, SIZE)						\
 	STX_MEM_##SIZEOP:						\
