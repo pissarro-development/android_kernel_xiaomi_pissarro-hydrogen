@@ -23,6 +23,7 @@ struct bpf_prog;
 struct bpf_map;
 struct sock;
 struct seq_file;
+struct btf;
 struct btf_type;
 
 /* map is generic key/value storage optionally accesible by eBPF programs */
@@ -57,6 +58,7 @@ struct bpf_map_ops {
 	void (*map_seq_show_elem)(struct bpf_map *map, void *key,
 				  struct seq_file *m);
 	int (*map_check_btf)(const struct bpf_map *map,
+			     const struct btf *btf,
 			     const struct btf_type *key_type,
 			     const struct btf_type *value_type);
 };
@@ -75,14 +77,15 @@ struct bpf_map {
 	u32 value_size;
 	u32 max_entries;
 	u32 map_flags;
-	u32 pages;
+	int spin_lock_off; /* >=0 valid offset, <0 error */
 	u32 id;
 	int numa_node;
 	u32 btf_key_type_id;
 	u32 btf_value_type_id;
 	struct btf *btf;
+	u32 pages;
 	bool unpriv_array;
-	/* 55 bytes hole */
+	/* 51 bytes hole */
 
 	/* The 3rd and 4th cacheline with misc members to avoid false sharing
 	 * particularly with refcounting.
@@ -93,6 +96,34 @@ struct bpf_map {
 	struct work_struct work;
 	char name[BPF_OBJ_NAME_LEN];
 };
+
+static inline bool map_value_has_spin_lock(const struct bpf_map *map)
+{
+	return map->spin_lock_off >= 0;
+}
+
+static inline void check_and_init_map_lock(struct bpf_map *map, void *dst)
+{
+	if (likely(!map_value_has_spin_lock(map)))
+		return;
+	*(struct bpf_spin_lock *)(dst + map->spin_lock_off) =
+		(struct bpf_spin_lock){};
+}
+
+/* copy everything but bpf_spin_lock */
+static inline void copy_map_value(struct bpf_map *map, void *dst, void *src)
+{
+	if (unlikely(map_value_has_spin_lock(map))) {
+		u32 off = map->spin_lock_off;
+
+		memcpy(dst, src, off);
+		memcpy(dst + off + sizeof(struct bpf_spin_lock),
+		       src + off + sizeof(struct bpf_spin_lock),
+		       map->value_size - off - sizeof(struct bpf_spin_lock));
+	} else {
+		memcpy(dst, src, map->value_size);
+	}
+}
 
 struct bpf_offload_dev;
 struct bpf_offloaded_map;
@@ -131,6 +162,7 @@ static inline bool bpf_map_support_seq_show(const struct bpf_map *map)
 }
 
 int map_check_no_btf(const struct bpf_map *map,
+		     const struct btf *btf,
 		     const struct btf_type *key_type,
 		     const struct btf_type *value_type);
 
@@ -146,6 +178,7 @@ enum bpf_arg_type {
 	ARG_CONST_MAP_PTR,	/* const argument used as pointer to bpf_map */
 	ARG_PTR_TO_MAP_KEY,	/* pointer to stack used as map key */
 	ARG_PTR_TO_MAP_VALUE,	/* pointer to stack used as map value */
+	ARG_PTR_TO_UNINIT_MAP_VALUE,	/* pointer to valid memory used to store a map value */
 
 	/* the following constraints used to prototype bpf_memcmp() and other
 	 * functions that access data on eBPF program stack
@@ -162,6 +195,8 @@ enum bpf_arg_type {
 
 	ARG_PTR_TO_CTX,		/* pointer to context */
 	ARG_ANYTHING,		/* any (initialized) argument is ok */
+	ARG_PTR_TO_SOCKET,	/* pointer to bpf_sock */
+	ARG_PTR_TO_SPIN_LOCK,	/* pointer to bpf_spin_lock */
 };
 
 /* type of values returned from helper functions */
@@ -170,6 +205,7 @@ enum bpf_return_type {
 	RET_VOID,			/* function doesn't return anything */
 	RET_PTR_TO_MAP_VALUE,		/* returns a pointer to map elem value */
 	RET_PTR_TO_MAP_VALUE_OR_NULL,	/* returns a pointer to map elem value or NULL */
+	RET_PTR_TO_SOCKET_OR_NULL,	/* returns a pointer to a socket or NULL */
 };
 
 /* eBPF function prototype used by verifier to allow BPF_CALLs from eBPF programs
@@ -221,6 +257,8 @@ enum bpf_reg_type {
 	PTR_TO_PACKET,		 /* reg points to skb->data */
 	PTR_TO_PACKET_END,	 /* skb->data + headlen */
 	PTR_TO_FLOW_KEYS,	 /* reg points to bpf_flow_keys */
+	PTR_TO_SOCKET,		 /* reg points to struct bpf_sock */
+	PTR_TO_SOCKET_OR_NULL,	 /* reg points to struct bpf_sock or NULL */
 };
 
 /* The information passed from prog-specific *_is_valid_access
@@ -303,6 +341,7 @@ struct bpf_prog_aux {
 	atomic_t refcnt;
 	u32 used_map_cnt;
 	u32 max_ctx_offset;
+	u32 max_pkt_offset;
 	u32 stack_depth;
 	u32 id;
 	u32 func_cnt; /* used by non-func prog as the number of func progs */
@@ -325,7 +364,28 @@ struct bpf_prog_aux {
 	struct bpf_prog_offload *offload;
 	struct btf *btf;
 	struct bpf_func_info *func_info;
+	/* bpf_line_info loaded from userspace.  linfo->insn_off
+	 * has the xlated insn offset.
+	 * Both the main and sub prog share the same linfo.
+	 * The subprog can access its first linfo by
+	 * using the linfo_idx.
+	 */
+	struct bpf_line_info *linfo;
+	/* jited_linfo is the jited addr of the linfo.  It has a
+	 * one to one mapping to linfo:
+	 * jited_linfo[i] is the jited addr for the linfo[i]->insn_off.
+	 * Both the main and sub prog share the same jited_linfo.
+	 * The subprog can access its first jited_linfo by
+	 * using the linfo_idx.
+	 */
+	void **jited_linfo;
 	u32 func_info_cnt;
+	u32 nr_linfo;
+	/* subprog can use linfo_idx to access its first linfo and
+	 * jited_linfo.
+	 * main prog always has linfo_idx == 0
+	 */
+	u32 linfo_idx;
 	union {
 		struct work_struct work;
 		struct rcu_head	rcu;
@@ -366,6 +426,11 @@ const struct bpf_func_proto *bpf_get_trace_printk_proto(void);
 
 typedef unsigned long (*bpf_ctx_copy_t)(void *dst, const void *src,
 					unsigned long off, unsigned long len);
+typedef u32 (*bpf_convert_ctx_access_t)(enum bpf_access_type type,
+					const struct bpf_insn *src,
+					struct bpf_insn *dst,
+					struct bpf_prog *prog,
+					u32 *target_size);
 
 u64 bpf_event_output(struct bpf_map *map, u64 flags, void *meta, u64 meta_size,
 		     void *ctx, u64 ctx_size, bpf_ctx_copy_t ctx_copy);
@@ -861,11 +926,37 @@ extern const struct bpf_func_proto bpf_msg_redirect_hash_proto;
 extern const struct bpf_func_proto bpf_msg_redirect_map_proto;
 extern const struct bpf_func_proto bpf_sk_redirect_hash_proto;
 extern const struct bpf_func_proto bpf_sk_redirect_map_proto;
-
+extern const struct bpf_func_proto bpf_spin_lock_proto;
+extern const struct bpf_func_proto bpf_spin_unlock_proto;
 extern const struct bpf_func_proto bpf_get_local_storage_proto;
 
 /* Shared helpers among cBPF and eBPF. */
 void bpf_user_rnd_init_once(void);
 u64 bpf_user_rnd_u32(u64 r1, u64 r2, u64 r3, u64 r4, u64 r5);
+
+#if defined(CONFIG_NET)
+bool bpf_sock_is_valid_access(int off, int size, enum bpf_access_type type,
+			      struct bpf_insn_access_aux *info);
+u32 bpf_sock_convert_ctx_access(enum bpf_access_type type,
+				const struct bpf_insn *si,
+				struct bpf_insn *insn_buf,
+				struct bpf_prog *prog,
+				u32 *target_size);
+#else
+static inline bool bpf_sock_is_valid_access(int off, int size,
+					    enum bpf_access_type type,
+					    struct bpf_insn_access_aux *info)
+{
+	return false;
+}
+static inline u32 bpf_sock_convert_ctx_access(enum bpf_access_type type,
+					      const struct bpf_insn *si,
+					      struct bpf_insn *insn_buf,
+					      struct bpf_prog *prog,
+					      u32 *target_size)
+{
+	return 0;
+}
+#endif
 
 #endif /* _LINUX_BPF_H */
