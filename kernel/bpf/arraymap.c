@@ -72,6 +72,9 @@ int array_map_alloc_check(union bpf_attr *attr)
 		 * access the elements.
 		 */
 		return -E2BIG;
+	/* percpu map value size is bound by PCPU_MIN_UNIT_SIZE */
+	if (percpu && round_up(attr->value_size, 8) > PCPU_MIN_UNIT_SIZE)
+		return -E2BIG;
 
 	return 0;
 }
@@ -138,7 +141,7 @@ static struct bpf_map *array_map_alloc(union bpf_attr *attr)
 
 	/* copy mandatory map attributes */
 	bpf_map_init_from_attr(&array->map, attr);
-	array->map.pages = cost;
+	array->map.memory.pages = cost;
 	array->elem_size = elem_size;
 
 	if (percpu && bpf_array_alloc_percpu(array)) {
@@ -391,18 +394,55 @@ static void array_map_seq_show_elem(struct bpf_map *map, void *key,
 		return;
 	}
 
-	seq_printf(m, "%u: ", *(u32 *)key);
+	if (map->btf_key_type_id)
+		seq_printf(m, "%u: ", *(u32 *)key);
 	btf_type_seq_show(map->btf, map->btf_value_type_id, value, m);
 	seq_puts(m, "\n");
 
 	rcu_read_unlock();
 }
 
+static void percpu_array_map_seq_show_elem(struct bpf_map *map, void *key,
+					   struct seq_file *m)
+{
+	struct bpf_array *array = container_of(map, struct bpf_array, map);
+	u32 index = *(u32 *)key;
+	void __percpu *pptr;
+	int cpu;
+
+	rcu_read_lock();
+
+	seq_printf(m, "%u: {\n", *(u32 *)key);
+	pptr = array->pptrs[index & array->index_mask];
+	for_each_possible_cpu(cpu) {
+		seq_printf(m, "\tcpu%d: ", cpu);
+		btf_type_seq_show(map->btf, map->btf_value_type_id,
+				  per_cpu_ptr(pptr, cpu), m);
+		seq_puts(m, "\n");
+	}
+	seq_puts(m, "}\n");
+
+	rcu_read_unlock();
+}
+
 static int array_map_check_btf(const struct bpf_map *map,
+			       const struct btf *btf,
 			       const struct btf_type *key_type,
 			       const struct btf_type *value_type)
 {
 	u32 int_data;
+
+	/* One exception for keyless BTF: .bss/.data/.rodata map */
+	if (btf_type_is_void(key_type)) {
+		if (map->map_type != BPF_MAP_TYPE_ARRAY ||
+		    map->max_entries != 1)
+			return -EINVAL;
+
+		if (BTF_INFO_KIND(value_type->info) != BTF_KIND_DATASEC)
+			return -EINVAL;
+
+		return 0;
+	}
 
 	if (BTF_INFO_KIND(key_type->info) != BTF_KIND_INT)
 		return -EINVAL;
@@ -440,6 +480,7 @@ const struct bpf_map_ops percpu_array_map_ops = {
 	.map_lookup_elem = percpu_array_map_lookup_elem,
 	.map_update_elem = array_map_update_elem,
 	.map_delete_elem = array_map_delete_elem,
+	.map_seq_show_elem = percpu_array_map_seq_show_elem,
 	.map_check_btf = array_map_check_btf,
 };
 
@@ -575,6 +616,29 @@ static void bpf_fd_array_map_clear(struct bpf_map *map)
 		fd_array_map_delete_elem(map, &i);
 }
 
+static void prog_array_map_seq_show_elem(struct bpf_map *map, void *key,
+					 struct seq_file *m)
+{
+	void **elem, *ptr;
+	u32 prog_id;
+
+	rcu_read_lock();
+
+	elem = array_map_lookup_elem(map, key);
+	if (elem) {
+		ptr = READ_ONCE(*elem);
+		if (ptr) {
+			seq_printf(m, "%u: ", *(u32 *)key);
+			prog_id = prog_fd_array_sys_lookup_elem(ptr);
+			btf_type_seq_show(map->btf, map->btf_value_type_id,
+					  &prog_id, m);
+			seq_puts(m, "\n");
+		}
+	}
+
+	rcu_read_unlock();
+}
+
 const struct bpf_map_ops prog_array_map_ops = {
 	.map_alloc_check = fd_array_map_alloc_check,
 	.map_alloc = array_map_alloc,
@@ -586,7 +650,7 @@ const struct bpf_map_ops prog_array_map_ops = {
 	.map_fd_put_ptr = prog_fd_array_put_ptr,
 	.map_fd_sys_lookup_elem = prog_fd_array_sys_lookup_elem,
 	.map_release_uref = bpf_fd_array_map_clear,
-	.map_check_btf = map_check_no_btf,
+	.map_seq_show_elem = prog_array_map_seq_show_elem,
 };
 
 static struct bpf_event_entry *bpf_event_entry_gen(struct file *perf_file,
