@@ -45,7 +45,7 @@ int set_stune_task_threshold(int threshold)
 }
 
 int sched_stune_task_threshold_handler(struct ctl_table *table,
-					int write, void __user *buffer,
+					int write, void *buffer,
 					size_t *lenp, loff_t *ppos)
 {
 	int ret;

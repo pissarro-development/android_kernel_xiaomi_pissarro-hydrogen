@@ -420,7 +420,7 @@ static const struct file_operations stack_trace_filter_fops = {
 
 int
 stack_trace_sysctl(struct ctl_table *table, int write,
-		   void __user *buffer, size_t *lenp,
+		   void *buffer, size_t *lenp,
 		   loff_t *ppos)
 {
 	int ret;
