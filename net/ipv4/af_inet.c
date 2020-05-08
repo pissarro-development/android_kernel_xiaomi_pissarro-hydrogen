@@ -430,6 +430,30 @@ EXPORT_SYMBOL(inet_release);
 
 int inet_bind(struct socket *sock, struct sockaddr *uaddr, int addr_len)
 {
+	struct sock *sk = sock->sk;
+	int err;
+
+	/* If the socket has its own bind function then use it. (RAW) */
+	if (sk->sk_prot->bind) {
+		return sk->sk_prot->bind(sk, uaddr, addr_len);
+	}
+	if (addr_len < sizeof(struct sockaddr_in))
+		return -EINVAL;
+
+	/* BPF prog is run before any checks are done so that if the prog
+	 * changes context in a wrong way it will be caught.
+	 */
+	err = BPF_CGROUP_RUN_PROG_INET4_BIND(sk, uaddr);
+	if (err)
+		return err;
+
+	return __inet_bind(sk, uaddr, addr_len, BIND_WITH_LOCK);
+}
+EXPORT_SYMBOL(inet_bind);
+
+int __inet_bind(struct sock *sk, struct sockaddr *uaddr, int addr_len,
+		u32 flags)
+{
 	struct sockaddr_in *addr = (struct sockaddr_in *)uaddr;
 	struct sock *sk = sock->sk;
 	struct inet_sock *inet = inet_sk(sk);
@@ -490,7 +514,8 @@ int inet_bind(struct socket *sock, struct sockaddr *uaddr, int addr_len)
 	 *      would be illegal to use them (multicast/broadcast) in
 	 *      which case the sending device address is used.
 	 */
-	lock_sock(sk);
+	if (flags & BIND_WITH_LOCK)
+		lock_sock(sk);
 
 	/* Check these errors (active socket, double bind). */
 	err = -EINVAL;
@@ -502,11 +527,18 @@ int inet_bind(struct socket *sock, struct sockaddr *uaddr, int addr_len)
 		inet->inet_saddr = 0;  /* Use device */
 
 	/* Make sure we are allowed to bind here. */
-	if ((snum || !inet->bind_address_no_port) &&
-	    sk->sk_prot->get_port(sk, snum)) {
-		inet->inet_saddr = inet->inet_rcv_saddr = 0;
-		err = -EADDRINUSE;
-		goto out_release_sock;
+	if (snum || !(inet->bind_address_no_port ||
+		      (flags & BIND_FORCE_ADDRESS_NO_PORT))) {
+		if (sk->sk_prot->get_port(sk, snum)) {
+			inet->inet_saddr = inet->inet_rcv_saddr = 0;
+			err = -EADDRINUSE;
+			goto out_release_sock;
+		}
+		err = BPF_CGROUP_RUN_PROG_INET4_POST_BIND(sk);
+		if (err) {
+			inet->inet_saddr = inet->inet_rcv_saddr = 0;
+			goto out_release_sock;
+		}
 	}
 
 	if (inet->inet_rcv_saddr)
@@ -519,7 +551,8 @@ int inet_bind(struct socket *sock, struct sockaddr *uaddr, int addr_len)
 	sk_dst_reset(sk);
 	err = 0;
 out_release_sock:
-	release_sock(sk);
+	if (flags & BIND_WITH_LOCK)
+		release_sock(sk);
 out:
 	return err;
 }

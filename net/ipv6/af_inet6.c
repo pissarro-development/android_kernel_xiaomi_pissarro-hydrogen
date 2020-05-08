@@ -280,7 +280,7 @@ out_rcu_unlock:
 }
 
 static int __inet6_bind(struct sock *sk, struct sockaddr *uaddr, int addr_len,
-			bool force_bind_address_no_port, bool with_lock)
+			u32 flags)
 {
 	struct sockaddr_in6 *addr = (struct sockaddr_in6 *)uaddr;
 	struct inet_sock *inet = inet_sk(sk);
@@ -304,7 +304,8 @@ static int __inet6_bind(struct sock *sk, struct sockaddr *uaddr, int addr_len,
 	    !ns_capable(net->user_ns, CAP_NET_BIND_SERVICE))
 		return -EACCES;
 
-	lock_sock(sk);
+	if (flags & BIND_WITH_LOCK)
+		lock_sock(sk);
 
 	/* Check these errors (active socket, double bind). */
 	if (sk->sk_state != TCP_CLOSE || inet->inet_num) {
@@ -407,12 +408,20 @@ static int __inet6_bind(struct sock *sk, struct sockaddr *uaddr, int addr_len,
 		sk->sk_ipv6only = 1;
 
 	/* Make sure we are allowed to bind here. */
-	if ((snum || !inet->bind_address_no_port) &&
-	    sk->sk_prot->get_port(sk, snum)) {
-		sk->sk_ipv6only = saved_ipv6only;
-		inet_reset_saddr(sk);
-		err = -EADDRINUSE;
-		goto out;
+	if (snum || !(inet->bind_address_no_port ||
+		      (flags & BIND_FORCE_ADDRESS_NO_PORT))) {
+		if (sk->sk_prot->get_port(sk, snum)) {
+			sk->sk_ipv6only = saved_ipv6only;
+			inet_reset_saddr(sk);
+			err = -EADDRINUSE;
+			goto out;
+		}
+		err = BPF_CGROUP_RUN_PROG_INET6_POST_BIND(sk);
+		if (err) {
+			sk->sk_ipv6only = saved_ipv6only;
+			inet_reset_saddr(sk);
+			goto out;
+		}
 	}
 
 	if (addr_type != IPV6_ADDR_ANY)
@@ -423,7 +432,8 @@ static int __inet6_bind(struct sock *sk, struct sockaddr *uaddr, int addr_len,
 	inet->inet_dport = 0;
 	inet->inet_daddr = 0;
 out:
-	release_sock(sk);
+	if (flags & BIND_WITH_LOCK)
+		release_sock(sk);
 	return err;
 out_unlock:
 	rcu_read_unlock();
@@ -454,7 +464,7 @@ int inet6_bind(struct socket *sock, struct sockaddr *uaddr, int addr_len)
 	if (err)
 		return err;
 
-	return __inet6_bind(sk, uaddr, addr_len, false, true);
+	return __inet6_bind(sk, uaddr, addr_len, BIND_WITH_LOCK);
 }
 EXPORT_SYMBOL(inet6_bind);
 
