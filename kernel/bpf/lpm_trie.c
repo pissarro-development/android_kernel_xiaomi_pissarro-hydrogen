@@ -755,15 +755,7 @@ static int trie_check_btf(const struct bpf_map *map,
 	       -EINVAL : 0;
 }
 
-static int trie_check_btf(const struct bpf_map *map,
-			  const struct btf_type *key_type,
-			  const struct btf_type *value_type)
-{
-	/* Keys must have struct bpf_lpm_trie_key embedded. */
-	return BTF_INFO_KIND(key_type->info) != BTF_KIND_STRUCT ?
-	       -EINVAL : 0;
-}
-
+static int trie_map_btf_id;
 const struct bpf_map_ops trie_map_ops = {
 	.map_alloc = trie_alloc,
 	.map_free = trie_free,
@@ -772,4 +764,6 @@ const struct bpf_map_ops trie_map_ops = {
 	.map_update_elem = trie_update_elem,
 	.map_delete_elem = trie_delete_elem,
 	.map_check_btf = trie_check_btf,
+	.map_btf_name = "lpm_trie",
+	.map_btf_id = &trie_map_btf_id,
 };
