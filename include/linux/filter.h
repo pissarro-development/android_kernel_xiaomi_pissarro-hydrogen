@@ -1367,4 +1367,45 @@ struct bpf_sock_ops_kern {
 					 */
 };
 
+struct bpf_sysctl_kern {
+	struct ctl_table_header *head;
+	struct ctl_table *table;
+	void *cur_val;
+	size_t cur_len;
+	void *new_val;
+	size_t new_len;
+	int new_updated;
+	int write;
+	loff_t *ppos;
+	/* Temporary "register" for indirect stores to ppos. */
+	u64 tmp_reg;
+};
+
+struct bpf_sockopt_kern {
+	struct sock	*sk;
+	u8		*optval;
+	u8		*optval_end;
+	s32		level;
+	s32		optname;
+	s32		optlen;
+	s32		retval;
+};
+
+struct bpf_sk_lookup_kern {
+	u16		family;
+	u16		protocol;
+	struct {
+		__be32 saddr;
+		__be32 daddr;
+	} v4;
+	struct {
+		const struct in6_addr *saddr;
+		const struct in6_addr *daddr;
+	} v6;
+	__be16		sport;
+	u16		dport;
+	struct sock	*selected_sk;
+	bool		no_reuseport;
+};
+
 #endif /* __LINUX_FILTER_H__ */
