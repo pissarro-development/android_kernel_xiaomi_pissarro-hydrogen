@@ -1350,11 +1350,38 @@ static u32 rtnl_xdp_prog_skb(struct net_device *dev)
 	if (!ops->ndo_bpf)
 		return XDP_ATTACHED_NONE;
 
-	*prog_id = __dev_xdp_query(dev, ops->ndo_bpf, XDP_QUERY_PROG);
-	if (!*prog_id)
-		return XDP_ATTACHED_NONE;
+static u32 rtnl_xdp_prog_drv(struct net_device *dev)
+{
+	return dev_xdp_prog_id(dev, XDP_MODE_DRV);
+}
 
-	return XDP_ATTACHED_DRV;
+static u32 rtnl_xdp_prog_hw(struct net_device *dev)
+{
+	return dev_xdp_prog_id(dev, XDP_MODE_HW);
+}
+
+static int rtnl_xdp_report_one(struct sk_buff *skb, struct net_device *dev,
+			       u32 *prog_id, u8 *mode, u8 tgt_mode, u32 attr,
+			       u32 (*get_prog_id)(struct net_device *dev))
+{
+	u32 curr_id;
+	int err;
+
+	curr_id = get_prog_id(dev);
+	if (!curr_id)
+		return 0;
+
+	*prog_id = curr_id;
+	err = nla_put_u32(skb, attr, curr_id);
+	if (err)
+		return err;
+
+	if (*mode != XDP_ATTACHED_NONE)
+		*mode = XDP_ATTACHED_MULTI;
+	else
+		*mode = tgt_mode;
+
+	return 0;
 }
 
 static int rtnl_xdp_fill(struct sk_buff *skb, struct net_device *dev)
