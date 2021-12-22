@@ -15,6 +15,7 @@
 #include <linux/errno.h>
 #include <linux/list.h>
 #include <linux/slab.h>
+#include <linux/vmalloc.h>
 
 #include "mdw_cmn.h"
 #include "mdw_rsc.h"

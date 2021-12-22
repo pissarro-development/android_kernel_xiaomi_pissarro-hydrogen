@@ -24,6 +24,7 @@
 #include <linux/kthread.h>
 #include <linux/uaccess.h>
 #include <linux/atomic.h>
+#include <linux/vmalloc.h>
 #ifdef CONFIG_PM_SLEEP
 #include <linux/device.h>
 #include <linux/pm_wakeup.h>
@@ -238,7 +239,7 @@ uint64_t mdw_rsc_get_avl_bmp(void)
 
 	bitmap_and(bmp, rsc_mgr.cmd_avl_bmp,
 		rsc_mgr.dev_avl_bmp, APUSYS_DEVICE_MAX);
-	bitmap_to_u32array((uint32_t *)&b, 2, bmp, APUSYS_DEVICE_MAX);
+	bitmap_to_arr32((uint32_t *)&b, bmp, APUSYS_DEVICE_MAX);
 	mdw_flw_debug("bmp(0x%llx)\n", b);
 
 	return b;
@@ -272,9 +273,9 @@ void mdw_rsc_update_avl_bmp(int type)
 	else
 		bitmap_clear(rsc_mgr.cmd_avl_bmp, type, 1);
 
-	bitmap_to_u32array((uint32_t *)&cb, 2,
+	bitmap_to_arr32((uint32_t *)&cb,
 		rsc_mgr.cmd_avl_bmp, APUSYS_DEVICE_MAX);
-	bitmap_to_u32array((uint32_t *)&db, 2,
+	bitmap_to_arr32((uint32_t *)&db,
 		rsc_mgr.dev_avl_bmp, APUSYS_DEVICE_MAX);
 
 	mdw_flw_debug("bmp: dev(0x%llx) cmd(0x%llx)\n", db, cb);
