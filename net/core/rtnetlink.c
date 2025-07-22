@@ -1331,44 +1331,14 @@ static u32 rtnl_xdp_prog_skb(struct net_device *dev)
 	ASSERT_RTNL();
 
 	generic_xdp_prog = rtnl_dereference(dev->xdp_prog);
-	if (!generic_xdp_prog)
-		return 0;
-	return generic_xdp_prog->aux->id;
-}
+	if (generic_xdp_prog) {
+		*prog_id = generic_xdp_prog->aux->id;
+		return XDP_ATTACHED_SKB;
+	}
+	if (!ops->ndo_xdp)
+		return XDP_ATTACHED_NONE;
 
-static u32 rtnl_xdp_prog_drv(struct net_device *dev)
-{
-	return __dev_xdp_query(dev, dev->netdev_ops->ndo_bpf, XDP_QUERY_PROG);
-}
-
-static u32 rtnl_xdp_prog_hw(struct net_device *dev)
-{
-	return __dev_xdp_query(dev, dev->netdev_ops->ndo_bpf,
-			       XDP_QUERY_PROG_HW);
-}
-
-static int rtnl_xdp_report_one(struct sk_buff *skb, struct net_device *dev,
-			       u32 *prog_id, u8 *mode, u8 tgt_mode, u32 attr,
-			       u32 (*get_prog_id)(struct net_device *dev))
-{
-	u32 curr_id;
-	int err;
-
-	curr_id = get_prog_id(dev);
-	if (!curr_id)
-		return 0;
-
-	*prog_id = curr_id;
-	err = nla_put_u32(skb, attr, curr_id);
-	if (err)
-		return err;
-
-	if (*mode != XDP_ATTACHED_NONE)
-		*mode = XDP_ATTACHED_MULTI;
-	else
-		*mode = tgt_mode;
-
-	return 0;
+	return __dev_xdp_attached(dev, ops->ndo_xdp, prog_id);
 }
 
 static int rtnl_xdp_fill(struct sk_buff *skb, struct net_device *dev)

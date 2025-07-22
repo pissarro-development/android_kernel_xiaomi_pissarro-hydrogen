@@ -44,7 +44,6 @@
 #include <net/dcbnl.h>
 #endif
 #include <net/netprio_cgroup.h>
-#include <net/xdp.h>
 
 #include <linux/netdev_features.h>
 #include <linux/neighbour.h>
@@ -700,7 +699,6 @@ struct netdev_rx_queue {
 #endif
 	struct kobject			kobj;
 	struct net_device		*dev;
-	struct xdp_rxq_info		xdp_rxq;
 } ____cacheline_aligned_in_smp;
 
 /*
@@ -792,10 +790,10 @@ enum tc_setup_type {
 	TC_SETUP_CLSBPF,
 };
 
-/* These structures hold the attributes of bpf state that are being passed
- * to the netdevice through the bpf op.
+/* These structures hold the attributes of xdp state that are being passed
+ * to the netdevice through the xdp op.
  */
-enum bpf_netdev_command {
+enum xdp_netdev_command {
 	/* Set or clear a bpf program used in the earliest stages of packet
 	 * rx. The prog will have been loaded as BPF_PROG_TYPE_XDP. The callee
 	 * is responsible for calling bpf_prog_put on any old progs that are
@@ -806,23 +804,13 @@ enum bpf_netdev_command {
 	XDP_SETUP_PROG,
 	XDP_SETUP_PROG_HW,
 	XDP_QUERY_PROG,
-	XDP_QUERY_PROG_HW,
-	/* BPF program for offload callbacks, invoked at program load time. */
-	BPF_OFFLOAD_VERIFIER_PREP,
-	BPF_OFFLOAD_TRANSLATE,
-	BPF_OFFLOAD_DESTROY,
-	BPF_OFFLOAD_MAP_ALLOC,
-	BPF_OFFLOAD_MAP_FREE,
-	XDP_QUERY_XSK_UMEM,
-	XDP_SETUP_XSK_UMEM,
 };
 
-struct bpf_prog_offload_ops;
 struct netlink_ext_ack;
 struct xdp_umem;
 
-struct netdev_bpf {
-	enum bpf_netdev_command command;
+struct netdev_xdp {
+	enum xdp_netdev_command command;
 	union {
 		/* XDP_SETUP_PROG */
 		struct {
@@ -840,20 +828,6 @@ struct netdev_bpf {
 		struct {
 			struct bpf_offloaded_map *offmap;
 		};
-		/* BPF_OFFLOAD_VERIFIER_PREP */
-		struct {
-			struct bpf_prog *prog;
-			const struct bpf_prog_offload_ops *ops; /* callee set */
-		} verifier;
-		/* BPF_OFFLOAD_TRANSLATE, BPF_OFFLOAD_DESTROY */
-		struct {
-			struct bpf_prog *prog;
-		} offload;
-		/* XDP_QUERY_XSK_UMEM, XDP_SETUP_XSK_UMEM */
-		struct {
-			struct xdp_umem *umem; /* out for query*/
-			u16 queue_id; /* in for query */
-		} xsk;
 	};
 };
 
@@ -1158,17 +1132,12 @@ struct xfrmdev_ops {
  *	appropriate rx headroom value allows avoiding skb head copy on
  *	forward. Setting a negative value resets the rx headroom to the
  *	default value.
- * int (*ndo_bpf)(struct net_device *dev, struct netdev_bpf *bpf);
+ * int (*ndo_xdp)(struct net_device *dev, struct netdev_xdp *xdp);
  *	This function is used to set or query state related to XDP on the
- *	netdevice and manage BPF offload. See definition of
- *	enum bpf_netdev_command for details.
- * int (*ndo_xdp_xmit)(struct net_device *dev, int n, struct xdp_frame **xdp,
- *			u32 flags);
- *	This function is used to submit @n XDP packets for transmit on a
- *	netdevice. Returns number of frames successfully transmitted, frames
- *	that got dropped are freed/returned via xdp_return_frame().
- *	Returns negative number, means general error invoking ndo, meaning
- *	no frames were xmit'ed and core-caller will free all frames.
+ *	netdevice. See definition of enum xdp_netdev_command for details.
+ * int (*ndo_xdp_xmit)(struct net_device *dev, struct xdp_buff *xdp);
+ *	This function is used to submit a XDP packet for transmit on a
+ *	netdevice.
  * void (*ndo_xdp_flush)(struct net_device *dev);
  *	This function is used to inform the driver to flush a particular
  *	xdp tx queue. Must be called on same CPU as xdp_xmit.
@@ -1353,11 +1322,10 @@ struct net_device_ops {
 						       struct sk_buff *skb);
 	void			(*ndo_set_rx_headroom)(struct net_device *dev,
 						       int needed_headroom);
-	int			(*ndo_bpf)(struct net_device *dev,
-					   struct netdev_bpf *bpf);
-	int			(*ndo_xdp_xmit)(struct net_device *dev, int n,
-						struct xdp_frame **xdp,
-						u32 flags);
+	int			(*ndo_xdp)(struct net_device *dev,
+					   struct netdev_xdp *xdp);
+	int			(*ndo_xdp_xmit)(struct net_device *dev,
+						struct xdp_buff *xdp);
 	void			(*ndo_xdp_flush)(struct net_device *dev);
 };
 
@@ -2854,9 +2822,7 @@ struct softnet_data {
 		u16 recursion;
 		u8  more;
 	} xmit;
-#ifdef CONFIG_XFRM_OFFLOAD
-	struct sk_buff_head	xfrm_backlog;
-#endif
+
 #ifdef CONFIG_RPS
 	/* input_queue_head should be written by cpu owning this struct,
 	 * and only read by other cpus. Worth using a cache line.
@@ -3422,16 +3388,14 @@ int dev_get_phys_port_id(struct net_device *dev,
 int dev_get_phys_port_name(struct net_device *dev,
 			   char *name, size_t len);
 int dev_change_proto_down(struct net_device *dev, bool proto_down);
-struct sk_buff *validate_xmit_skb_list(struct sk_buff *skb, struct net_device *dev, bool *again);
+struct sk_buff *validate_xmit_skb_list(struct sk_buff *skb, struct net_device *dev);
 struct sk_buff *dev_hard_start_xmit(struct sk_buff *skb, struct net_device *dev,
 				    struct netdev_queue *txq, int *ret);
 
-typedef int (*bpf_op_t)(struct net_device *dev, struct netdev_bpf *bpf);
+typedef int (*xdp_op_t)(struct net_device *dev, struct netdev_xdp *xdp);
 int dev_change_xdp_fd(struct net_device *dev, struct netlink_ext_ack *extack,
 		      int fd, u32 flags);
-u32 __dev_xdp_query(struct net_device *dev, bpf_op_t xdp_op,
-		    enum bpf_netdev_command cmd);
-int xdp_umem_query(struct net_device *dev, u16 queue_id);
+u8 __dev_xdp_attached(struct net_device *dev, xdp_op_t xdp_op, u32 *prog_id);
 
 int __dev_forward_skb(struct net_device *dev, struct sk_buff *skb);
 int dev_forward_skb(struct net_device *dev, struct sk_buff *skb);
