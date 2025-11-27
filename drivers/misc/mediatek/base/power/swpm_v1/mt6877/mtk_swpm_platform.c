@@ -934,7 +934,7 @@ static void swpm_log_loop(unsigned long data)
 		trace_swpm_power_idx(idx_buf);
 	}
 	/* put power data to ftrace */
-	trace_swpm_power(buf);
+	// trace_swpm_power(buf);
 
 #ifdef LOG_LOOP_TIME_PROFILE
 	t2 = ktime_get();
