@@ -14,6 +14,9 @@
 #$(call all-subdir-src-or-makefile)
 export MTK_PLATFORM_NAME := $(CONFIG_MTK_PLATFORM)
 export MTK_PLATFORM := $(subst ",,$(CONFIG_MTK_PLATFORM))
+export MTK_SOC_NAME := $(CONFIG_MTK_SOC)
+export MTK_SOC := $(subst ",,$(CONFIG_MTK_SOC))
+
 subdir-ccflags-y += -Werror
 
 subdir-ccflags-y += -I$(srctree)/drivers/misc/mediatek/include
