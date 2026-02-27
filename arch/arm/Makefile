@@ -324,9 +324,10 @@ KBUILD_DTBS := dtbs
 endif
 
 all:	$(notdir $(KBUILD_IMAGE)) $(KBUILD_DTBS)
-MTK_PLATFORM := $(CONFIG_MTK_PLATFORM:"%"=%)
 MTK_PROJECT := $(CONFIG_ARCH_MTK_PROJECT:"%"=%)
-export MTK_PLATFORM MTK_PROJECT
+MTK_PLATFORM := $(CONFIG_MTK_PLATFORM:"%"=%)
+MTK_SOC := $(CONFIG_MTK_SOC:"%"=%)
+export MTK_PROJECT MTK_PLATFORM MTK_SOC
 
 archheaders:
 	$(Q)$(MAKE) $(build)=arch/arm/tools uapi
