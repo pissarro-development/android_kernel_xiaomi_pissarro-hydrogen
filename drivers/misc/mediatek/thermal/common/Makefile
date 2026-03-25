@@ -20,7 +20,7 @@ else ifeq ($(CONFIG_MACH_MT6877),y)
 else ifeq ($(CONFIG_MACH_MT6781),y)
 	PDIR = mt6781
 else
-	PDIR = $(MTK_PLATFORM)
+	PDIR = $(MTK_SOC)
 endif
 
 THERMAL_CHIP_DRIVER_DIR := $(srctree)/drivers/misc/mediatek/thermal/$(PDIR)
@@ -34,7 +34,7 @@ ccflags-y  += -I$(srctree)/drivers/misc/mediatek/thermal/common/inc/
 ccflags-y  += -I$(srctree)/drivers/misc/mediatek/base/power/eem_v1/inc/
 ifeq ($(CONFIG_MTK_APUSYS_SUPPORT),y)
 ccflags-${CONFIG_MACH_MT6893} += -I$(srctree)/drivers/misc/mediatek/apusys/power/2.0/mt6893/
-ccflags-y  += -I$(srctree)/drivers/misc/mediatek/apusys/power/2.0/$(MTK_PLATFORM)
+ccflags-y  += -I$(srctree)/drivers/misc/mediatek/apusys/power/2.0/$(MTK_SOC)
 else
 ccflags-y  += -I$(srctree)/drivers/misc/mediatek/vpu/$(PDIR)
 ccflags-y  += -I$(srctree)/drivers/misc/mediatek/mdla/1.0

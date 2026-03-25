@@ -25,9 +25,10 @@ endif
 
 ccflags-y += -I$(srctree)/drivers/misc/mediatek/base/power/include/
 ccflags-y += -I$(srctree)/drivers/misc/mediatek/include/mt-plat/
+ccflags-y += -I$(srctree)/drivers/misc/mediatek/include/mt-plat/$(MTK_SOC)/include/mach/
 ccflags-y += -I$(srctree)/drivers/misc/mediatek/include/mt-plat/$(MTK_PLATFORM)/include/mach/
 ccflags-y += -I$(srctree)/drivers/misc/mediatek/base/power/include/pbm_v4/
 ccflags-y += -I$(srctree)/drivers/misc/mediatek/base/power/include/pbm_v4/$(PDIR)
-ccflags-y += -I$(srctree)/drivers/misc/mediatek/thermal/$(PDIR)/inc/
+ccflags-y += -I$(srctree)/drivers/misc/mediatek/thermal/$(MTK_SOC)/inc/
 
 obj-y += mtk_pbm.o

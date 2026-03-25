@@ -22,6 +22,7 @@ endif
 ifeq ($(CONFIG_MICROTRUST_TEE_SUPPORT), y)
 include $(srctree)/drivers/misc/mediatek/teei/Makefile.include
 endif
+ccflags-y += -I$(srctree)/drivers/misc/mediatek/include/mt-plat/$(MTK_SOC)/include/trustzone/m4u
 ccflags-y += -I$(srctree)/drivers/misc/mediatek/include/mt-plat/$(MTK_PLATFORM)/include/trustzone/m4u
 
 ifeq ($(CONFIG_MTK_TRUSTED_MEMORY_SUBSYSTEM),y)

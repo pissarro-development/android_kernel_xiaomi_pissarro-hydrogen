@@ -14,7 +14,7 @@
 ifeq ($(CONFIG_MACH_MT6893),y)
 	PDIR = mt6893
 else
-	PDIR = $(MTK_PLATFORM)
+	PDIR = $(MTK_SOC)
 endif
 
 THERMAL_CHIP_DRIVER_DIR := $(srctree)/drivers/misc/mediatek/thermal/$(PDIR)
@@ -33,6 +33,7 @@ ccflags-y  += -I$(srctree)/drivers/misc/mediatek/pmic/include/
 ccflags-y  += -I$(srctree)/drivers/misc/mediatek/thermal/common/inc/
 ccflags-y  += -I$(srctree)/include/dt-bindings/
 ccflags-y  += -I$(srctree)/drivers/misc/mediatek/base/power/include/gpufreq_v1/
+ccflags-y  += -I$(srctree)/drivers/misc/mediatek/include/mt-plat/$(MTK_SOC)/include/
 ccflags-y  += -I$(srctree)/drivers/misc/mediatek/include/mt-plat/$(MTK_PLATFORM)/include/
 
 obj-$(CONFIG_THERMAL) += mtk_lvts_tc.o

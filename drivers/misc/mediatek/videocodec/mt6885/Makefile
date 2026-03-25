@@ -26,7 +26,8 @@ ccflags-y += \
     -I$(srctree)/drivers/misc/mediatek/videocodec/include   \
     -I$(srctree)/drivers/misc/mediatek/videocodec/include/kernel   \
     -I$(srctree)/drivers/misc/mediatek/include/mt-plat   \
-    -I$(srctree)/drivers/misc/mediatek/include/mt-plat/$(MTK_PLATFORM)/include/mach   \
+    -I$(srctree)/drivers/misc/mediatek/include/mt-plat/$(MTK_SOC)/include/mach   \
+    -I$(srctree)/drivers/misc/mediatek/include/mt-plat/$(MTK_PLATFORM)/include/mach \
     -I$(srctree)/drivers/misc/mediatek/m4u/$(MTK_PLATFORM)	\
     -I$(srctree)/drivers/misc/mediatek/smi \
     -I$(srctree)/drivers/misc/mediatek/mmdvfs/

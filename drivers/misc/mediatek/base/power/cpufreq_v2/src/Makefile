@@ -15,8 +15,9 @@ ccflags-y += -DMET_USER_EVENT_SUPPORT
 
 ccflags-y += \
 	-I$(CPUFREQ_ROOT_DIR)/inc \
-	-I$(CPUFREQ_ROOT_DIR)/src/mach/$(CONFIG_MTK_PLATFORM) \
-	-I$(srctree)/drivers/misc/mediatek/include/mt-plat/$(CONFIG_MTK_PLATFORM)/include	\
+	-I$(CPUFREQ_ROOT_DIR)/src/mach/$(MTK_SOC) \
+	-I$(srctree)/drivers/misc/mediatek/include/mt-plat/$(MTK_SOC)/include	\
+	-I$(srctree)/drivers/misc/mediatek/include/mt-plat/$(MTK_PLATFORM)/include \
 	-I$(srctree)/drivers/misc/mediatek/base/power/$(CONFIG_MTK_PLATFORM)
 #sspm
 ccflags-y += -I$(srctree)/drivers/misc/mediatek/sspm/

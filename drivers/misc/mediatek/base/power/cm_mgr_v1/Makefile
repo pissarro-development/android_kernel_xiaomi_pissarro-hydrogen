@@ -19,7 +19,7 @@ ifeq (,$(filter $(CONFIG_MTK_PLATFORM), "mt6771"))
 ifdef CONFIG_MTK_PLATFORM
 MTK_PLATFORM := $(subst ",,$(CONFIG_MTK_PLATFORM))
 ifeq (,$(filter $(CONFIG_MACH_MT8168), y))
-include $(srctree)/drivers/misc/mediatek/base/power/qos/$(MTK_PLATFORM)/Makefile
+include $(srctree)/drivers/misc/mediatek/base/power/qos/$(subst ",,$(CONFIG_MTK_SOC))/Makefile
 endif
 endif
 endif
@@ -44,21 +44,23 @@ endif
 
 ccflags-y += \
 	-I$(CPUFREQ_ROOT_DIR)/inc \
-	-I$(CPUFREQ_ROOT_DIR)/src/mach/$(CONFIG_MTK_PLATFORM) \
+	-I$(CPUFREQ_ROOT_DIR)/src/mach/$(MTK_SOC) \
 	-I$(srctree)/drivers/devfreq \
 	-I$(srctree)/drivers/devfreq/helio-dvfsrc-v4/ \
 	-I$(srctree)/drivers/misc/mediatek/base/power/$(CONFIG_MTK_PLATFORM) \
 	-I$(srctree)/drivers/misc/mediatek/base/power/cm_mgr_v1/ \
 	-I$(srctree)/drivers/misc/mediatek/base/power/cpufreq_v1/inc \
-	-I$(srctree)/drivers/misc/mediatek/base/power/cpufreq_v1/src/mach/$(CONFIG_MTK_PLATFORM) \
+	-I$(srctree)/drivers/misc/mediatek/base/power/cpufreq_v1/src/mach/$(MTK_SOC) \
 	-I$(srctree)/drivers/misc/mediatek/base/power/include \
-	-I$(srctree)/drivers/misc/mediatek/base/power/qos/$(CONFIG_MTK_PLATFORM)/ \
+	-I$(srctree)/drivers/misc/mediatek/base/power/qos/$(MTK_SOC)/ \
 	-I$(srctree)/drivers/misc/mediatek/dramc/$(CONFIG_MTK_PLATFORM) \
 	-I$(srctree)/drivers/misc/mediatek/emi/$(CONFIG_MTK_PLATFORM) \
 	-I$(srctree)/drivers/misc/mediatek/include \
 	-I$(srctree)/drivers/misc/mediatek/include/mt-plat \
-	-I$(srctree)/drivers/misc/mediatek/include/mt-plat/$(CONFIG_MTK_PLATFORM)/include \
-	-I$(srctree)/drivers/misc/mediatek/include/mt-plat/$(CONFIG_MTK_PLATFORM)/include/mach \
+	-I$(srctree)/drivers/misc/mediatek/include/mt-plat/$(MTK_SOC)/include \
+	-I$(srctree)/drivers/misc/mediatek/include/mt-plat/$(MTK_PLATFORM)/include \
+	-I$(srctree)/drivers/misc/mediatek/include/mt-plat/$(MTK_SOC)/include/mach \
+	-I$(srctree)/drivers/misc/mediatek/include/mt-plat/$(MTK_PLATFORM)/include/mach \
 	-I$(srctree)/drivers/misc/mediatek/sspm/$(CONFIG_MTK_PLATFORM) \
 	-I$(srctree)/include \
 	-I$(srctree)/include/memory/mediatek/ \
@@ -87,7 +89,7 @@ ccflags-y += -I$(srctree)/drivers/misc/mediatek/sspm/mt6781
 ccflags-y += -I$(srctree)/drivers/misc/mediatek/base/power/cm_mgr_v1/mt6781
 obj-y += mt6781/
 else
-ccflags-y += -I$(srctree)/drivers/misc/mediatek/base/power/cm_mgr_v1/$(CONFIG_MTK_PLATFORM)
+ccflags-y += -I$(srctree)/drivers/misc/mediatek/base/power/cm_mgr_v1/$(MTK_SOC)
 obj-y += $(subst ",,$(CONFIG_MTK_PLATFORM))/
 endif
 

@@ -21,7 +21,7 @@ else ifeq ($(CONFIG_MACH_MT6893),y)
 else ifeq ($(CONFIG_MACH_MT6877),y)
     platform = mt6877
 else
-    platform = $(subst ",,$(CONFIG_MTK_PLATFORM))
+    platform = $(subst ",,$(CONFIG_MTK_SOC))
 endif
 
 obj-y += $(subst ",,$(platform))/

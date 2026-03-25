@@ -4,6 +4,7 @@ ccflags-y += -I$(srctree)/drivers/misc/mediatek/base/power/include/spm_v4/
 ccflags-y += -I$(srctree)/drivers/misc/mediatek/base/power/eem_v1/inc/
 ccflags-y += -I$(srctree)/drivers/misc/mediatek/include/
 ccflags-y += -I$(srctree)/drivers/misc/mediatek/include/mt-plat/
+ccflags-y += -I$(srctree)/drivers/misc/mediatek/include/mt-plat/$(MTK_SOC)/include/mach/
 ccflags-y += -I$(srctree)/drivers/misc/mediatek/include/mt-plat/$(MTK_PLATFORM)/include/mach/
 
 ccflags-y += -I$(srctree)/drivers/misc/mediatek/irq/$(MTK_PLATFORM)/
@@ -36,7 +37,7 @@ ccflags-y += -I$(srctree)/drivers/misc/mediatek/emi/$(MTK_PLATFORM)/
 endif
 
 ifeq ($(CONFIG_MACH_MT6771), y)
-ccflags-y  += -I$(srctree)/drivers/misc/mediatek/thermal/$(MTK_PLATFORM)/inc/
+ccflags-y  += -I$(srctree)/drivers/misc/mediatek/thermal/$(MTK_SOC)/inc/
 endif
 
 ifeq ($(CONFIG_MTK_SND_SOC_NEW_ARCH), y)
@@ -112,9 +113,9 @@ endif
 
 ifeq ($(CONFIG_MACH_MT6739), y)
 ccflags-y += -I$(srctree)/drivers/misc/mediatek/base/power/include/clkbuf_v1/
-ccflags-y += -I$(srctree)/drivers/misc/mediatek/base/power/eem_v2/$(MTK_PLATFORM)/inc/
+ccflags-y += -I$(srctree)/drivers/misc/mediatek/base/power/eem_v2/$(MTK_SOC)/inc/
 ccflags-y += -I$(srctree)/drivers/misc/mediatek/base/power/include/cpuidle_v3/
-ccflags-y += -I$(srctree)/drivers/misc/mediatek/base/power/cpufreq_v2/src/mach/$(MTK_PLATFORM)/
+ccflags-y += -I$(srctree)/drivers/misc/mediatek/base/power/cpufreq_v2/src/mach/$(MTK_SOC)/
 obj-y += mtk_idle_mt6739.o
 obj-y += mtk_spm_dpidle_mt6739.o
 obj-y += mtk_spm_sleep_mt6739.o
@@ -122,9 +123,9 @@ obj-y += mtk_spm_sodi_mt6739.o
 endif
 
 ifeq ($(CONFIG_MACH_MT6771), y)
-ccflags-y += -I$(srctree)/drivers/misc/mediatek/base/power/eem_v2/$(MTK_PLATFORM)/inc/
+ccflags-y += -I$(srctree)/drivers/misc/mediatek/base/power/eem_v2/$(MTK_SOC)/inc/
 ccflags-y += -I$(srctree)/drivers/misc/mediatek/base/power/include/cpuidle_v3/
-ccflags-y += -I$(srctree)/drivers/misc/mediatek/base/power/cpufreq_v1/src/mach/$(MTK_PLATFORM)/
+ccflags-y += -I$(srctree)/drivers/misc/mediatek/base/power/cpufreq_v1/src/mach/$(MTK_SOC)/
 obj-y += mtk_idle_mt6771.o
 obj-y += mtk_spm_dpidle_mt6771.o
 obj-y += mtk_spm_sleep_mt6771.o

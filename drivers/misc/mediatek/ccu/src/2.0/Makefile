@@ -15,8 +15,8 @@ ccflags-y += -I$(srctree)/drivers/staging/android/ion \
              -I$(srctree)/drivers/staging/android/ion/mtk
 ccflags-y += -I$(srctree)/drivers/misc/mediatek/m4u/$(MTK_PLATFORM)/
 ccflags-y += -I$(srctree)/drivers/misc/mediatek/include/mt-plat
-ccflags-y += -I$(srctree)/drivers/misc/mediatek/ccu/src/$(MTK_PLATFORM)/
-ccflags-y += -I$(srctree)/drivers/misc/mediatek/ccu/src/$(MTK_PLATFORM)/ccu_ext_interface/
+ccflags-y += -I$(srctree)/drivers/misc/mediatek/ccu/src/$(MTK_SOC)/
+ccflags-y += -I$(srctree)/drivers/misc/mediatek/ccu/src/$(MTK_SOC)/ccu_ext_interface/
 ccflags-y += -I$(srctree)/drivers/i2c/busses
 
 ccflags-y += -I$(srctree)/drivers/iommu/

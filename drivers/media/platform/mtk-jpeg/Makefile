@@ -10,6 +10,7 @@ ccflags-y += -I$(srctree)/drivers/misc/mediatek/smi
 ifeq ($(CONFIG_MACH_MT6781),y)
 ccflags-y += -I$(srctree)/drivers/misc/mediatek/include/mt-plat/mt6781/include
 else
+ccflags-y += -I$(srctree)/drivers/misc/mediatek/include/mt-plat/$(MTK_SOC)/include
 ccflags-y += -I$(srctree)/drivers/misc/mediatek/include/mt-plat/$(MTK_PLATFORM)/include
 endif
 
@@ -19,7 +20,7 @@ ccflags-y += -I$(srctree)/drivers/misc/mediatek/include/mt-plat
 ifeq ($(CONFIG_MACH_MT6781),y)
 ccflags-y += -I$(srctree)/drivers/misc/mediatek/smi/mt6781
 else
-ccflags-y += -I$(srctree)/drivers/misc/mediatek/smi/$(MTK_PLATFORM)
+ccflags-y += -I$(srctree)/drivers/misc/mediatek/smi/$(MTK_SOC)
 endif
 
 ccflags-y += -I$(srctree)/drivers/staging/android/ion

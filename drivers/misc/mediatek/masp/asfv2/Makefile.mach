@@ -12,10 +12,10 @@ ifeq (y, $(filter y, $(CONFIG_MACH_MT6761)))
 MTK_PLATFORM := mt6765
 endif
 
-ifeq (,$(wildcard $(MASP_CORE_DRIVER_DIR)/$(asf_link)/mach/$(MTK_PLATFORM)))
+ifeq (,$(wildcard $(MASP_CORE_DRIVER_DIR)/$(asf_link)/mach/$(CONFIG_MTK_SOC)))
 mach_obj += $(asf_link)/mach/security_ao_dummy.o
 else
-mach_obj += $(asf_link)/mach/$(MTK_PLATFORM)/security_ao.o
+mach_obj += $(asf_link)/mach/$(CONFIG_MTK_SOC)/security_ao.o
 endif
 
 ccflags-y += -I$(src)/$(asf_link)/asf_inc

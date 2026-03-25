@@ -28,7 +28,7 @@ endif
 endif
 
 ccflags-y += -I$(srctree)/drivers/misc/mediatek/smi/ \
-             -I$(srctree)/drivers/misc/mediatek/smi/$(MTK_PLATFORM)/ \
+             -I$(srctree)/drivers/misc/mediatek/smi/$(MTK_SOC)/ \
              -I$(srctree)/drivers/misc/mediatek/mmdvfs/ \
              -I$(srctree)/drivers/misc/mediatek/mmp/ \
              -I$(srctree)/drivers/misc/mediatek/mach/$(MTK_PLATFORM)/include

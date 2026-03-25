@@ -29,7 +29,7 @@ obj-y += platform/mt6893/fbt_cpu_platform.o
 else ifeq ($(CONFIG_MACH_MT6877),y)
 obj-y += platform/mt6877/fbt_cpu_platform.o
 else
-obj-y += platform/$(MTK_PLATFORM)/fbt_cpu_platform.o
+obj-y += platform/$(MTK_SOC)/fbt_cpu_platform.o
 endif
 
 ifeq ($(CONFIG_MACH_MT6893),y)
@@ -59,7 +59,8 @@ ccflags-y += \
 	-I$(FSTB_TOP)/ \
 	-I$(EARA_TOP)/include/ \
 	-I$(srctree)/kernel/ \
-	-I$(MTK_TOP)/thermal/$(MTK_PLATFORM)/inc/ \
-	-I$(MTK_TOP)/thermal/$(MTK_PLATFORM)/inc/mach \
+	-I$(MTK_TOP)/thermal/$(MTK_SOC)/inc/ \
+	-I$(MTK_TOP)/thermal/$(MTK_SOC)/inc/mach \
 	-I$(MTK_TOP)/include/mt-plat \
+	-I$(MTK_TOP)/include/mt-plat/$(MTK_SOC)/include/mach \
 	-I$(MTK_TOP)/include/mt-plat/$(MTK_PLATFORM)/include/mach

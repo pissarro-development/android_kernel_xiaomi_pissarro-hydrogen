@@ -2,6 +2,7 @@
 #
 # Makefile for multifunction miscellaneous devices
 #
+subdir-ccflags-y += -Werror -I$(srctree)/drivers/misc/mediatek/include/mt-plat/$(MTK_SOC)/include
 subdir-ccflags-y += -Werror -I$(srctree)/drivers/misc/mediatek/include/mt-plat/$(MTK_PLATFORM)/include
 
 88pm860x-objs			:= 88pm860x-core.o 88pm860x-i2c.o

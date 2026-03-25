@@ -13,7 +13,8 @@
 
 ccflags-y += \
 	-I$(PPM_ROOT_DIR)/inc \
-	-I$(srctree)/drivers/misc/mediatek/include/mt-plat/$(CONFIG_MTK_PLATFORM)/include	\
+	-I$(srctree)/drivers/misc/mediatek/include/mt-plat/$(MTK_SOC)/include	\
+	-I$(srctree)/drivers/misc/mediatek/include/mt-plat/$(MTK_PLATFORM)/include \
 	-I$(srctree)/drivers/misc/mediatek/base/power/include	\
 	-I$(srctree)/drivers/misc/mediatek/base/power/$(CONFIG_MTK_PLATFORM)	\
 
@@ -23,7 +24,7 @@ else
 ifeq ($(CONFIG_MACH_MT6893),y)
 ccflags-y += -I$(PPM_ROOT_DIR)/src/mach/mt6893
 else
-ccflags-y += -I$(PPM_ROOT_DIR)/src/mach/$(CONFIG_MTK_PLATFORM)
+ccflags-y += -I$(PPM_ROOT_DIR)/src/mach/$(MTK_SOC)
 endif
 endif
 

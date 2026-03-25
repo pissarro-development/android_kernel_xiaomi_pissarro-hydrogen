@@ -13,7 +13,7 @@
 ifeq ($(CONFIG_MACH_MT6893),y)
     platform = mt6893
 else
-    platform = $(subst ",,$(CONFIG_MTK_PLATFORM))
+    platform = $(subst ",,$(CONFIG_MTK_SOC))
 endif
 
 ccflags-y += -I$(srctree)/drivers/staging/android/ion \

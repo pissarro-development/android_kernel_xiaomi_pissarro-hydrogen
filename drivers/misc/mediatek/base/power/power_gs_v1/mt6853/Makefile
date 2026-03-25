@@ -12,7 +12,7 @@
 #
 
 ccflags-y += -I$(srctree)/drivers/misc/mediatek/base/power/include/power_gs_v1/
-ccflags-y += -I$(srctree)/drivers/misc/mediatek/base/power/include/power_gs_v1/$(MTK_PLATFORM)/
+ccflags-y += -I$(srctree)/drivers/misc/mediatek/base/power/include/power_gs_v1/$(MTK_SOC)/
 
 obj-y += mtk_power_gs_6359_array.o
 obj-y += mtk_power_gs_6362_array.o

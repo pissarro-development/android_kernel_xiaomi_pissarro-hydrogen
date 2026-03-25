@@ -12,13 +12,13 @@
 #
 ccflags-y += -I$(srctree)/drivers/misc/mediatek/base/power/include/
 ccflags-y += -I$(srctree)/drivers/misc/mediatek/base/power/mcdi/include/
-ccflags-y += -I$(srctree)/drivers/misc/mediatek/base/power/mcdi/$(CONFIG_MTK_PLATFORM)/
+ccflags-y += -I$(srctree)/drivers/misc/mediatek/base/power/mcdi/$(MTK_SOC)/
 
 obj-y += mtk_mcdi_governor.o
 obj-y += mtk_mcdi_governor_lib.o
 obj-y += mtk_mcdi_governor_hint.o
 obj-y += mtk_mcdi_api.o
-obj-y += $(subst ",,$(CONFIG_MTK_PLATFORM))/
+obj-y += $(subst ",,$(CONFIG_MTK_SOC))/
 
 ifeq ($(CONFIG_MACH_MT6771), y)
 ccflags-y += -I$(srctree)/drivers/misc/mediatek/base/power/mcdi/include/mcdi_v1/

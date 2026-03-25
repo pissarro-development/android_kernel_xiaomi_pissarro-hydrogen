@@ -91,7 +91,7 @@ endif
 endif
 
 ccflags-y += -I$(srctree)/drivers/misc/mediatek/smi/
-ccflags-y += -I$(srctree)/drivers/misc/mediatek/smi/$(MTK_PLATFORM)
+ccflags-y += -I$(srctree)/drivers/misc/mediatek/smi/$(MTK_SOC)
 ccflags-y += -I$(srctree)/drivers/misc/mediatek/mmdvfs
 ccflags-y += -I$(srctree)/drivers/staging/android/ion
 ccflags-y += -I$(srctree)/drivers/staging/android/ion/mtk
@@ -99,9 +99,10 @@ ccflags-y += -I$(srctree)/drivers/staging/android/ion/mtk
 obj-y += jpeg_driver.o
 
 ifdef CONFIG_MTK_PSEUDO_M4U
+  ccflags-y += -I$(srctree)/drivers/misc/mediatek/include/mt-plat/$(MTK_SOC)/include
   ccflags-y += -I$(srctree)/drivers/misc/mediatek/include/mt-plat/$(MTK_PLATFORM)/include
   ccflags-y += -I$(srctree)/drivers/iommu/
-  ccflags-y += -I$(srctree)/drivers/misc/mediatek/smi/$(MTK_PLATFORM)
+  ccflags-y += -I$(srctree)/drivers/misc/mediatek/smi/$(MTK_SOC)
 endif
 
 #jpeg_driver-objs := jpeg_cmdq.o jpeg_drv_enc.o jpeg_drv_dec.o jpeg_drv.o

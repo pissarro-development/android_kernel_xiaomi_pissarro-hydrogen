@@ -31,7 +31,7 @@ ccflags-y += -I$(srctree)/drivers/misc/mediatek/apusys/power/2.0/test/
 ccflags-y += -I$(srctree)/drivers/misc/mediatek/apusys/power/2.0/$(PDIR)
 ccflags-y += -I$(srctree)/drivers/misc/mediatek/apusys/midware/1.1/
 ccflags-y += -I$(srctree)/drivers/misc/mediatek/freqhopping/
-ccflags-y += -I$(srctree)/drivers/misc/mediatek/freqhopping/$(CONFIG_MTK_PLATFORM)/
+ccflags-y += -I$(srctree)/drivers/misc/mediatek/freqhopping/$(MTK_SOC)/
 
 # FPGA environment
 ifeq ($(CONFIG_MTK_FPGA),y)

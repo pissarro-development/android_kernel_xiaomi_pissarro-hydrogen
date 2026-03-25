@@ -21,7 +21,7 @@ ccflags-y += -I$(srctree)/drivers/misc/mediatek/smi/
 ccflags-${CONFIG_MACH_MT6833} += -I$(srctree)/drivers/misc/mediatek/smi/mt6833/
 ccflags-${CONFIG_MACH_MT6877} += -I$(srctree)/drivers/misc/mediatek/smi/mt6877/
 ccflags-${CONFIG_MACH_MT6781} += -I$(srctree)/drivers/misc/mediatek/smi/mt6781/
-ccflags-y += -I$(srctree)/drivers/misc/mediatek/smi/$(MTK_PLATFORM)/
+ccflags-y += -I$(srctree)/drivers/misc/mediatek/smi/$(MTK_SOC)/
 
 obj-y += swpm_me.o
 
@@ -159,7 +159,7 @@ endif
 ifeq ($(CONFIG_MTK_QOS_V2),y)
 ifeq (true, $(QOS_BOUND_DETECT))
 ccflags-y += -DQOS_BOUND_DETECT
-ccflags-y += -I$(srctree)/drivers/misc/mediatek/base/power/qos/$(MTK_PLATFORM)/
+ccflags-y += -I$(srctree)/drivers/misc/mediatek/base/power/qos/$(MTK_SOC)/
 endif
 endif
 
@@ -187,6 +187,6 @@ ifeq ($(CONFIG_MTK_FREQ_HOPPING),y)
 ifeq (true, $(MTK_FREQ_HOPPING))
 ccflags-y += -DPLL_HOPPING_READY
 ccflags-y += -I$(srctree)/drivers/misc/mediatek/freqhopping/
-ccflags-y += -I$(srctree)/drivers/misc/mediatek/freqhopping/$(MTK_PLATFORM)/
+ccflags-y += -I$(srctree)/drivers/misc/mediatek/freqhopping/$(MTK_SOC)/
 endif
 endif

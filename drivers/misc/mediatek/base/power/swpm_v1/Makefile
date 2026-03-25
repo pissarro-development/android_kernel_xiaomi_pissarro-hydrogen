@@ -47,8 +47,8 @@ ccflags-y += \
 	obj-y += $(subst ",,mt6877)/
 else
 ccflags-y += \
-	-I$(srctree)/drivers/misc/mediatek/base/power/swpm_v1/$(CONFIG_MTK_PLATFORM)/
-	obj-y += $(subst ",,$(CONFIG_MTK_PLATFORM))/
+	-I$(srctree)/drivers/misc/mediatek/base/power/swpm_v1/$(MTK_SOC)/
+	obj-y += $(subst ",,$(CONFIG_MTK_SOC))/
 endif
 
 ifneq ($(CONFIG_FPGA_EARLY_PORTING),y)

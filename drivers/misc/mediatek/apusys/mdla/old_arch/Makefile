@@ -23,10 +23,10 @@ MEM_VDIR = 1.0
 UTIL_DIR = ../../util
 POWER_DIR = ../../power
 POWER_VDIR = 2.0
-POWER_PDIR = $(MTK_PLATFORM)
+POWER_PDIR = $(MTK_SOC)
 MIDWARE_DIR = ../../midware
 MIDWARE_VDIR = 1.1
-M4U_PDIR = $(MTK_PLATFORM)
+M4U_PDIR = $(MTK_SOC)
 
 # mt6893 and mt6885 co-platform folder
 ifeq ($(CONFIG_MACH_MT6893),y)

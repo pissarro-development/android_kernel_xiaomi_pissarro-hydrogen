@@ -8,12 +8,13 @@ $(info ************  drivers/trusty/mtee-kree mk ************)
 ccflags-y := -I$(srctree)/drivers/misc/mediatek/geniezone/public -Werror $(ccflags-y)
 
 ifneq ($(CONFIG_MACH_MT6758), y)
-ccflags-y += -I$(srctree)/drivers/misc/mediatek/base/power/ppm_v3/src/mach/$(CONFIG_MTK_PLATFORM)
+ccflags-y += -I$(srctree)/drivers/misc/mediatek/base/power/ppm_v3/src/mach/$(MTK_SOC)
 ccflags-y += -I$(srctree)/drivers/misc/mediatek/base/power/include/ppm_v3
 endif
 
 ifeq ($(CONFIG_MTK_TEE_GP_SUPPORT),y)
   ccflags-y += -I$(srctree)/arch/arm/mach-$(MTK_PLATFORM)/include/trustzone/utils/tlutils
+  ccflags-y += -I$(srctree)/drivers/misc/mediatek/include/mt-plat/$(MTK_SOC)/include/trustzone/utils/tlutils
   ccflags-y += -I$(srctree)/drivers/misc/mediatek/include/mt-plat/$(MTK_PLATFORM)/include/trustzone/utils/tlutils
   ccflags-y += -I$(src)/$(MTK_PLATFORM)
   ccflags-y += -I$(srctree)/drivers/misc/mediatek/trusted_mem/public
@@ -29,6 +30,7 @@ ifeq ($(CONFIG_MTK_TEE_GP_SUPPORT),y)
 else # Legacy
   ifeq ($(CONFIG_TRUSTONIC_TEE_SUPPORT),y)
     ccflags-y += -I$(srctree)/arch/arm/mach-$(MTK_PLATFORM)/include/trustzone/utils/tlutils
+    ccflags-y += -I$(srctree)/drivers/misc/mediatek/include/mt-plat/$(MTK_SOC)/include/trustzone/utils/tlutils
     ccflags-y += -I$(srctree)/drivers/misc/mediatek/include/mt-plat/$(MTK_PLATFORM)/include/trustzone/utils/tlutils
     ccflags-y += -I$(src)/$(MTK_PLATFORM)
     include $(srctree)/drivers/misc/mediatek/gud/Makefile.include

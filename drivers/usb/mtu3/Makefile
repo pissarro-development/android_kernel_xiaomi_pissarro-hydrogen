@@ -17,7 +17,7 @@ endif
 ifeq ($(CONFIG_MACH_MT6877),y)
 ccflags-y += -I$(srctree)/drivers/usb/mtu3/mt6877/
 else
-ccflags-y += -I$(srctree)/drivers/usb/mtu3/$(CONFIG_MTK_PLATFORM)/
+ccflags-y += -I$(srctree)/drivers/usb/mtu3/$(MTK_SOC)/
 endif
 endif
 
@@ -26,7 +26,7 @@ ifneq ($(CONFIG_USB_MTU3_PLAT_PHONE),)
 ifeq ($(CONFIG_MACH_MT6877),y)
 obj-y += $(subst ",,mt6877)/
 else
-obj-y += $(subst ",,$(CONFIG_MTK_PLATFORM))/
+obj-y += $(subst ",,$(CONFIG_MTK_SOC))/
 endif
 obj-y += mtu3_debugfs_v2.o
 

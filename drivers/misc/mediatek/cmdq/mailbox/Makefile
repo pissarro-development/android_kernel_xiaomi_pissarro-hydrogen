@@ -10,7 +10,7 @@ CMDQ_PLATFORM := mt6877
 else ifeq ($(CONFIG_MACH_MT6781),y)
 CMDQ_PLATFORM := mt6781
 else
-CMDQ_PLATFORM := $(MTK_PLATFORM)
+CMDQ_PLATFORM := $(MTK_SOC)
 endif
 
 ifeq ($(CONFIG_MACH_MT6833),y)
@@ -26,12 +26,14 @@ ccflags-y += -I$(srctree)/drivers/misc/mediatek/mach/$(CMDQ_PLATFORM)/include \
              -I$(srctree)/drivers/misc/mediatek/mdp/$(MDP_PLATFORM) \
              -I$(srctree)/drivers/misc/mediatek/mmp/
 ifeq ($(or $(strip $(CONFIG_MTK_SVP_ON_MTEE_SUPPORT)), $(strip $(CONFIG_MTK_CAM_GENIEZONE_SUPPORT))),y)
+ccflags-y += -I$(srctree)/drivers/misc/mediatek/include/mt-plat/$(MTK_SOC)/include/trustzone/m4u
 ccflags-y += -I$(srctree)/drivers/misc/mediatek/include/mt-plat/$(MTK_PLATFORM)/include/trustzone/m4u
 ccflags-y += -I$(srctree)/drivers/iommu
 endif
 
 
 ifeq ($(or $(strip $(CONFIG_MTK_SVP_ON_MTEE_SUPPORT)), $(strip $(CONFIG_MTK_CAM_GENIEZONE_SUPPORT))),y)
+ccflags-y += -I$(srctree)/drivers/misc/mediatek/include/mt-plat/$(MTK_SOC)/include/trustzone/m4u
 ccflags-y += -I$(srctree)/drivers/misc/mediatek/include/mt-plat/$(MTK_PLATFORM)/include/trustzone/m4u
 ccflags-y += -I$(srctree)/drivers/iommu
 endif

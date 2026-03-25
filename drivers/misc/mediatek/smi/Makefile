@@ -18,7 +18,7 @@ SMI_PLATFORM := "mt6877"
 else ifeq ($(CONFIG_MACH_MT6781),y)
 SMI_PLATFORM := "mt6781"
 else
-SMI_PLATFORM := $(CONFIG_MTK_PLATFORM)
+SMI_PLATFORM := $(MTK_SOC)
 endif
 
 ifeq ($(CONFIG_MTK_SMI_EXT), y)
@@ -40,7 +40,7 @@ ccflags-y += -I$(srctree)/drivers/misc/mediatek/mmp/
 ccflags-y += -I$(srctree)/drivers/misc/mediatek/sspm/$(MTK_PLATFORM)/
 
 ccflags-y += -I$(srctree)/drivers/misc/mediatek/freqhopping/
-ccflags-y += -I$(srctree)/drivers/misc/mediatek/freqhopping/$(CONFIG_MTK_PLATFORM)
+ccflags-y += -I$(srctree)/drivers/misc/mediatek/freqhopping/$(MTK_SOC)
 
 ifneq (,$(filter $(CONFIG_MTK_PLATFORM), "mt6739"))
 ccflags-y += -DSMI_ZIO
