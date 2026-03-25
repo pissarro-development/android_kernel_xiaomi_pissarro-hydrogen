@@ -12,7 +12,7 @@ else ifeq ($(CONFIG_MACH_MT6877),y)
 else ifeq ($(CONFIG_MACH_MT6781),y)
 	PDIR = mt6781
 else
-	PDIR = $(MTK_PLATFORM)
+	PDIR = $(MTK_SOC)
 endif
 
 THERMAL_CHIP_DRIVER_DIR := $(srctree)/drivers/misc/mediatek/thermal/$(PDIR)

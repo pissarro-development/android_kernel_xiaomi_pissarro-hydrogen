@@ -4,6 +4,6 @@ else
 ifeq ($(CONFIG_MACH_MT6893),y)
 obj-y += mt6893/
 else
-obj-y += $(subst ",,$(CONFIG_MTK_PLATFORM))/
+obj-y += $(subst ",,$(CONFIG_MTK_SOC))/
 endif
 endif

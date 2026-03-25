@@ -19,12 +19,14 @@ MTK_PLATFORM := mt6781
 else
 MTK_PLATFORM := $(subst ",,$(CONFIG_MTK_PLATFORM))
 endif
+MTK_SOC := $(subst ",,$(CONFIG_MTK_SOC))
 MTK_MISC_INC := drivers/misc/mediatek/include
+ccflags-y += -I$(srctree)/$(MTK_MISC_INC)/mt-plat/$(MTK_SOC)/include
 ccflags-y += -I$(srctree)/$(MTK_MISC_INC)/mt-plat/$(MTK_PLATFORM)/include
 ccflags-y += -I$(srctree)/$(MTK_MISC_INC)/mt-plat
 ccflags-y += -I$(srctree)/$(MTK_MISC_INC)
 ccflags-y += -I$(srctree)/drivers/misc/mediatek/base/power/include
-ccflags-y += -I$(srctree)/drivers/scsi/ufs/mediatek/$(MTK_PLATFORM)
+ccflags-y += -I$(srctree)/drivers/scsi/ufs/mediatek/$(MTK_SOC)
 endif
 
 obj-$(CONFIG_SCSI_UFS_QCOM) += ufs-qcom.o
@@ -38,7 +40,7 @@ obj-$(CONFIG_SCSI_SKHPB) += ufshpb_skh.o
 obj-$(CONFIG_SCSI_UFSHCD_PCI) += ufshcd-pci.o
 obj-$(CONFIG_SCSI_UFSHCD_PLATFORM) += ufshcd-pltfrm.o
 obj-$(CONFIG_MTK_UFS_SUPPORT) += ufs-mtk.o
-obj-$(CONFIG_MTK_UFS_SUPPORT) += mediatek/$(MTK_PLATFORM)/ufs-mtk-platform.o
+obj-$(CONFIG_MTK_UFS_SUPPORT) += mediatek/$(MTK_SOC)/ufs-mtk-platform.o
 obj-$(CONFIG_MTK_UFS_BLOCK_IO_LOG) += ufs-mtk-block.o
 obj-$(CONFIG_MTK_UFS_SUPPORT) += ufs-mtk-dbg.o
 

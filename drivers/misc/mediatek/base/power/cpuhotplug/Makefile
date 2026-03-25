@@ -22,9 +22,9 @@ obj-y += mtk_cpuhp_platform.o
 # platform dependent source and includes
 
 # MT6771
-ccflags-$(CONFIG_MACH_MT6771) += -I$(srctree)/drivers/misc/mediatek/freqhopping/$(CONFIG_MTK_PLATFORM)
+ccflags-$(CONFIG_MACH_MT6771) += -I$(srctree)/drivers/misc/mediatek/freqhopping/$(MTK_SOC)
 obj-$(CONFIG_MACH_MT6771) += mtk_cpuhp_mt6771.o
 
 # MT6775
-ccflags-$(CONFIG_MACH_MT6775) += -I$(srctree)/drivers/misc/mediatek/freqhopping/$(CONFIG_MTK_PLATFORM)
+ccflags-$(CONFIG_MACH_MT6775) += -I$(srctree)/drivers/misc/mediatek/freqhopping/$(MTK_SOC)
 obj-$(CONFIG_MACH_MT6775) += mtk_cpuhp_mt6771.o

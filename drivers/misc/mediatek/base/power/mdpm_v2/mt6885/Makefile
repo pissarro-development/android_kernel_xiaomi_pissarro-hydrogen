@@ -12,8 +12,9 @@
 #
 
 ccflags-y += -I$(srctree)/drivers/misc/mediatek/base/power/include/mdpm_v2/
-ccflags-y += -I$(srctree)/drivers/misc/mediatek/base/power/include/mdpm_v2/$(MTK_PLATFORM)/
+ccflags-y += -I$(srctree)/drivers/misc/mediatek/base/power/include/mdpm_v2/$(MTK_SOC)/
 ccflags-y += -I$(srctree)/drivers/misc/mediatek/include/mt-plat/
+ccflags-y += -I$(srctree)/drivers/misc/mediatek/include/mt-plat/$(MTK_SOC)/include/mach/
 ccflags-y += -I$(srctree)/drivers/misc/mediatek/include/mt-plat/$(MTK_PLATFORM)/include/mach/
 ccflags-y += -I$(srctree)/drivers/devfreq
 

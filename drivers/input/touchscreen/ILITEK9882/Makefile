@@ -10,6 +10,7 @@ ccflags-y += -I$(srctree)/drivers/spi/mediatek/mt6797/
 ccflags-y += -I$(srctree)/drivers/input/touchscreen/ILITEK_V3/
 ccflags-y += -I$(srctree)/drivers/input/touchscreen/ILITEK_V3/firmware/
 ccflags-y += -I$(srctree)/drivers/misc/mediatek/include/mt-plat/
+ccflags-y += -I$(srctree)/drivers/misc/mediatek/include/mt-plat/$(MTK_SOC)/include/
 ccflags-y += -I$(srctree)/drivers/misc/mediatek/include/mt-plat/$(MTK_PLATFORM)/include/
 endif
 

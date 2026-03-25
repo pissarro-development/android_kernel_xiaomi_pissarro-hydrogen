@@ -20,6 +20,6 @@ ccflags-y += -I$(srctree)/drivers/misc/mediatek/m4u/$(MTK_PLATFORM)/
 endif
 ccflags-y += -I$(srctree)/drivers/misc/mediatek/include/mt-plat
 
-ccflags-y += -I$(srctree)/drivers/misc/mediatek/vpu/$(MTK_PLATFORM)/
+ccflags-y += -I$(srctree)/drivers/misc/mediatek/vpu/$(MTK_SOC)/
 
 obj-$(CONFIG_MTK_VPU_SUPPORT) += vpu_drv.o vpu_algo.o vpu_dbg.o vpu_pool.o

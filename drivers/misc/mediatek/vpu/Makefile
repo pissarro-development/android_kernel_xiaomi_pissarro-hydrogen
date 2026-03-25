@@ -20,7 +20,7 @@ else
 ifeq (y, $(filter y, $(CONFIG_MACH_MT6893)))
 PDIR = mt6885
 else
-PDIR = $(CONFIG_MTK_PLATFORM)
+PDIR = $(MTK_SOC)
 endif
 obj-y += $(subst ",,$(PDIR))/
 obj-$(CONFIG_MACH_MT6771) += 2.0/

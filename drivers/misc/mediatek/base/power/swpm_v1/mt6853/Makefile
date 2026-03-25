@@ -13,11 +13,12 @@
 
 ccflags-y += \
 	-I$(srctree)/drivers/misc/mediatek/include/mt-plat/	\
-	-I$(srctree)/drivers/misc/mediatek/include/mt-plat/$(CONFIG_MTK_PLATFORM)/include/	\
+	-I$(srctree)/drivers/misc/mediatek/include/mt-plat/$(MTK_SOC)/include/	\
+	-I$(srctree)/drivers/misc/mediatek/include/mt-plat/$(MTK_PLATFORM)/include/ \
 	-I$(srctree)/drivers/misc/mediatek/base/power/include/	\
 	-I$(srctree)/drivers/misc/mediatek/base/power/include/swpm_v1/	\
-	-I$(srctree)/drivers/misc/mediatek/base/power/qos/$(CONFIG_MTK_PLATFORM)/	\
-	-I$(srctree)/drivers/misc/mediatek/thermal/$(CONFIG_MTK_PLATFORM)/inc/mach/	\
+	-I$(srctree)/drivers/misc/mediatek/base/power/qos/$(MTK_SOC)/	\
+	-I$(srctree)/drivers/misc/mediatek/thermal/$(MTK_SOC)/inc/mach/	\
 	-I$(srctree)/drivers/misc/mediatek/base/power/$(CONFIG_MTK_PLATFORM)/	\
 
 ifeq ($(CONFIG_MTK_TINYSYS_SSPM_SUPPORT), y)

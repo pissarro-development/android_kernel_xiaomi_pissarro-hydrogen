@@ -21,7 +21,7 @@ ccflags-y += -I$(srctree)/drivers/misc/mediatek/include/mt-plat
 ccflags-y += -I$(srctree)/drivers/misc/mediatek/base/power/include
 ccflags-y += -I$(srctree)/drivers/devfreq
 ccflags-y += -I$(srctree)/include
-ccflags-y += -I$(srctree)/drivers/misc/mediatek/vpu/$(MTK_PLATFORM)
+ccflags-y += -I$(srctree)/drivers/misc/mediatek/vpu/$(MTK_SOC)
 ccflags-y += -I$(srctree)/drivers/misc/mediatek/base/power/qos/mt6779
 ccflags-y += -I$(srctree)/drivers/misc/mediatek/power/1.0
 

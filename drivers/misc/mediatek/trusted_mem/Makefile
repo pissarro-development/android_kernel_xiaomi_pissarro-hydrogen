@@ -108,6 +108,7 @@ endif # !CONFIG_MTK_ION
 
 ifeq ($(CONFIG_MTK_TEE_GP_SUPPORT),y)
 ccflags-y += -I$(srctree)/arch/arm/mach-$(MTK_PLATFORM)/include/trustzone/utils/tlutils
+ccflags-y += -I$(srctree)/drivers/misc/mediatek/include/mt-plat/$(MTK_SOC)/include/trustzone/utils/tlutils
 ccflags-y += -I$(srctree)/drivers/misc/mediatek/include/mt-plat/$(MTK_PLATFORM)/include/trustzone/utils/tlutils
 ccflags-y += -I$(src)/$(MTK_PLATFORM)
 endif # !CONFIG_MTK_TEE_GP_SUPPORT

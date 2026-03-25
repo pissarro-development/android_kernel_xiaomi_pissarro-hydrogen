@@ -21,7 +21,7 @@ ccflags-y += -I$(srctree)/drivers/misc/mediatek/imgsensor/inc
 ifeq ($(CONFIG_MACH_MT6877),y)
     platform = mt6877
 else
-    platform = $(subst ",,$(CONFIG_MTK_PLATFORM))
+    platform = $(subst ",,$(CONFIG_MTK_SOC))
 endif
 
 ccflags-y += -I$(srctree)/drivers/misc/mediatek/m4u/$(MTK_PLATFORM)/

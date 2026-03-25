@@ -36,10 +36,11 @@ endif
 endif
 
 ccflags-y += -I$(CPUFREQ_ROOT_DIR)/src/mach/$(MTK_PLATFORM)
-include $(srctree)/drivers/misc/mediatek/base/power/cpufreq_v1/src/mach/$(MTK_PLATFORM)/Makefile
+include $(srctree)/drivers/misc/mediatek/base/power/cpufreq_v1/src/mach/$(subst ",,$(CONFIG_MTK_SOC))/Makefile
 
 ccflags-y += \
         -I$(CPUFREQ_ROOT_DIR)/inc \
+        -I$(srctree)/drivers/misc/mediatek/include/mt-plat/$(MTK_SOC)/include \
         -I$(srctree)/drivers/misc/mediatek/include/mt-plat/$(MTK_PLATFORM)/include \
         -I$(srctree)/drivers/misc/mediatek/base/power/$(MTK_PLATFORM) \
         -I$(srctree)/drivers/misc/mediatek/base/power/include

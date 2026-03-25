@@ -16,10 +16,11 @@ ccflags-y += \
 	-I$(srctree)/drivers/misc/mediatek/base/power/include/	\
 	-I$(srctree)/drivers/misc/mediatek/base/power/$(CONFIG_MTK_PLATFORM)\
 	-I$(srctree)/drivers/misc/mediatek/include/mt-plat/	\
-	-I$(srctree)/drivers/misc/mediatek/include/mt-plat/$(CONFIG_MTK_PLATFORM)/include/mach	\
+	-I$(srctree)/drivers/misc/mediatek/include/mt-plat/$(MTK_SOC)/include/mach	\
+	-I$(srctree)/drivers/misc/mediatek/include/mt-plat/$(MTK_PLATFORM)/include/mach \
 	-I$(srctree)/drivers/misc/mediatek/base/power/cpufreq_v1/inc	\
 	-I$(srctree)/drivers/misc/mediatek/base/power/cpufreq_v1/src	\
-	-I$(srctree)/drivers/misc/mediatek/base/power/cpufreq_v1/src/mach/$(CONFIG_MTK_PLATFORM)	\
+	-I$(srctree)/drivers/misc/mediatek/base/power/cpufreq_v1/src/mach/$(MTK_SOC)	\
 	-I$(srctree)/drivers/misc/mediatek/mcupm/$(CONFIG_MTK_PLATFORM)	\
 	-I$(srctree)/include/linux/	\
 

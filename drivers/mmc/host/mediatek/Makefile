@@ -17,6 +17,7 @@
 
 #add kernel source code path as head file search path
 MTK_PLATFORM := $(subst ",,$(CONFIG_MTK_PLATFORM))
+MTK_SOC := $(subst ",,$(CONFIG_MTK_SOC))
 ifeq (y, $(filter y, $(CONFIG_MACH_MT6833)))
 MTK_PLATFORM := mt6833
 MMC_FOLDER := mt6833
@@ -26,10 +27,11 @@ else ifeq (y, $(filter y, $(CONFIG_MACH_MT6781)))
 MTK_PLATFORM := mt6785
 MMC_FOLDER := mt6781
 else
-MMC_FOLDER := $(MTK_PLATFORM)
+MMC_FOLDER := $(MTK_SOC)
 endif
 
 ccflags-y += -I$(srctree)/drivers/misc/mediatek/include
+ccflags-y += -I$(srctree)/drivers/misc/mediatek/include/mt-plat/$(MTK_SOC)/include
 ccflags-y += -I$(srctree)/drivers/misc/mediatek/include/mt-plat/$(MTK_PLATFORM)/include
 ccflags-y += -I$(srctree)/drivers/misc/mediatek/include/mt-plat
 ccflags-y += -I$(srctree)/drivers/misc/mediatek/base/power/include

@@ -37,7 +37,7 @@ ccflags-$(CONFIG_MACH_MT6781) += -DCMDQ_MDP_ENABLE_SPR
 ccflags-$(CONFIG_MACH_MT6781) += -DMDP_MMPATH
 
 ccflags-y += -I$(srctree)/drivers/misc/mediatek/smi/ \
-	     -I$(srctree)/drivers/misc/mediatek/smi/$(MTK_PLATFORM)/ \
+	     -I$(srctree)/drivers/misc/mediatek/smi/$(MTK_SOC)/ \
 	     -I$(srctree)/drivers/misc/mediatek/mmdvfs/ \
 	     -I$(srctree)/drivers/misc/mediatek/mmp/ \
 	     -I$(srctree)/drivers/misc/mediatek/mach/$(MTK_PLATFORM)/include \
@@ -59,6 +59,7 @@ else ifneq (,$(filter $(CONFIG_MTK_PLATFORM), "mt8167"))
 endif
 
 ifeq ($(or $(strip $(CONFIG_MTK_SVP_ON_MTEE_SUPPORT)), $(strip $(CONFIG_MTK_CAM_GENIEZONE_SUPPORT))),y)
+ccflags-y += -I$(srctree)/drivers/misc/mediatek/include/mt-plat/$(MTK_SOC)/include/trustzone/m4u
 ccflags-y += -I$(srctree)/drivers/misc/mediatek/include/mt-plat/$(MTK_PLATFORM)/include/trustzone/m4u
 ccflags-y += -I$(srctree)/drivers/iommu
 endif

@@ -33,6 +33,7 @@ subdir-ccflags-y += -I$(MTK_DRIVER_PATH)/camera/$(MTK_PLATFORM) \
              -I$(MTK_DRIVER_PATH)/imgsensor/inc \
              -I$(MTK_DRIVER_PATH)/cam_cal/inc \
              -I$(MTK_DRIVER_PATH)/smi \
+             -I$(MTK_DRIVER_PATH)/include/mt-plat/$(MTK_SOC)/include/mach \
              -I$(MTK_DRIVER_PATH)/include/mt-plat/$(MTK_PLATFORM)/include/mach \
              -I$(MTK_DRIVER_PATH)/imgsensor/src/$(CONFIG_MTK_PLATFORM_SENSOR)
 

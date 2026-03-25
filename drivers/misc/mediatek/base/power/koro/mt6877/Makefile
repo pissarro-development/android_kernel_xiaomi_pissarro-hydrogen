@@ -16,10 +16,11 @@ ccflags-y += \
 	-I$(srctree)/drivers/misc/mediatek/base/power/include/	\
 	-I$(srctree)/drivers/misc/mediatek/base/power/$(CONFIG_MTK_PLATFORM)\
 	-I$(srctree)/drivers/misc/mediatek/include/mt-plat/	\
-	-I$(srctree)/drivers/misc/mediatek/include/mt-plat/$(CONFIG_MTK_PLATFORM)/include/mach	\
+	-I$(srctree)/drivers/misc/mediatek/include/mt-plat/$(MTK_SOC)/include/mach	\
+	-I$(srctree)/drivers/misc/mediatek/include/mt-plat/$(MTK_PLATFORM)/include/mach \
 	-I$(srctree)/include/linux/	\
 	-I$(srctree)/include/linux/soc/mediatek/	\
-	-I$(KORO_ROOT_DIR)/$(CONFIG_MTK_PLATFORM)/inc	\
+	-I$(KORO_ROOT_DIR)/$(MTK_SOC)/inc	\
 
 obj-y += mtk_koro.o
 

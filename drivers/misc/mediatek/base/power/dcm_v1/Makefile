@@ -7,7 +7,8 @@ ccflags-y += -I$(srctree)/drivers/misc/mediatek/base/power/include/dcm_v1/
 ccflags-y += -I$(srctree)/drivers/misc/mediatek/base/power/$(MTK_PLATFORM)/
 ccflags-y += -I$(srctree)/drivers/misc/mediatek/base/power/include/
 ccflags-y += -I$(srctree)/drivers/misc/mediatek/dramc/$(MTK_PLATFORM)/
-ccflags-y += -I$(srctree)/drivers/misc/mediatek/include/mt-plat/$(CONFIG_MTK_PLATFORM)/include/mach
+ccflags-y += -I$(srctree)/drivers/misc/mediatek/include/mt-plat/$(MTK_SOC)/include/mach
+ccflags-y += -I$(srctree)/drivers/misc/mediatek/include/mt-plat/$(MTK_PLATFORM)/include/mach
 
 ifeq ($(CONFIG_MACH_MT6833),y)
 ccflags-y += -I$(srctree)/drivers/misc/mediatek/base/power/include/dcm_v1/mt6833/
@@ -19,8 +20,8 @@ else ifeq ($(CONFIG_MACH_MT6781),y)
 ccflags-y += -I$(srctree)/drivers/misc/mediatek/base/power/include/dcm_v1/mt6781/
 obj-y += mt6781/
 else
-ccflags-y += -I$(srctree)/drivers/misc/mediatek/base/power/include/dcm_v1/$(MTK_PLATFORM)/
-obj-y += $(subst ",,$(CONFIG_MTK_PLATFORM))/
+ccflags-y += -I$(srctree)/drivers/misc/mediatek/base/power/include/dcm_v1/$(MTK_SOC)/
+obj-y += $(subst ",,$(CONFIG_MTK_SOC))/
 endif
 
 obj-$(CONFIG_MACH_MT6739) += mtk_dcm.o
