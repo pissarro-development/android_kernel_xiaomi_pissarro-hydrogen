@@ -1,8 +1,9 @@
+// SPDX-License-Identifier: GPL-2.0
 /*
  * step/jeita charge controller
  *
  * published by the Free Software Foundation.
-
+ *
  * THIS PACKAGE IS PROVIDED ``AS IS'' AND WITHOUT ANY EXPRESS OR
  * IMPLIED WARRANTIES, INCLUDING, WITHOUT LIMITATION, THE IMPLIED
  * WARRANTIES OF MERCHANTIBILITY AND FITNESS FOR A PARTICULAR PURPOSE.
@@ -306,91 +307,129 @@ static void charge_monitor_func(struct work_struct *work)
 	schedule_delayed_work(&info->charge_monitor_work, msecs_to_jiffies(FCC_DESCENT_DELAY));
 }
 
-static int parse_cycle_count_step_chg_cfg(struct charger_manager *info)
-{
-	int total_length = 0, i = 0, ret = 0;
-	struct device_node *np = info->pdev->dev.of_node;
-
-	if (!np) {
-		chr_err("no device node\n");
-		return -EINVAL;
-	}
-
-	if (info->cycle_count_status == CYCLE_COUNT_LOW) {
-		total_length = of_property_count_elems_of_size(np, "step_chg_cfg_low_cycle", sizeof(u32));
-		if (total_length < 0) {
-			chr_err("failed to read total_length of config\n");
-			return -EINVAL;
-		}
-		ret = of_property_read_u32_array(np, "step_chg_cfg_low_cycle", (u32 *)info->step_chg_cfg, total_length);
-		if (ret) {
-			chr_err("failed to parse step_chg_cfg_low_cycle\n");
-			return ret;
-		}
-	} else if (info->cycle_count_status == CYCLE_COUNT_NORMAL) {
-		total_length = of_property_count_elems_of_size(np, "step_chg_cfg_normal_cycle", sizeof(u32));
-		if (total_length < 0) {
-			chr_err("failed to read total_length of config\n");
-			return -EINVAL;
-		}
-		ret = of_property_read_u32_array(np, "step_chg_cfg_normal_cycle", (u32 *)info->step_chg_cfg, total_length);
-		if (ret) {
-			chr_err("failed to parse step_chg_cfg_normal_cycle\n");
-			return ret;
-		}
-	} else {
-		total_length = of_property_count_elems_of_size(np, "step_chg_cfg_high_cycle", sizeof(u32));
-		if (total_length < 0) {
-			chr_err("failed to read total_length of config\n");
-			return -EINVAL;
-		}
-		ret = of_property_read_u32_array(np, "step_chg_cfg_high_cycle", (u32 *)info->step_chg_cfg, total_length);
-		if (ret) {
-			chr_err("failed to parse step_chg_cfg_high_cycle\n");
-			return ret;
-		}
-	}
-
-	for (i = 0; i < STEP_JEITA_TUPLE_COUNT; i++)
-		chr_info("STEP %d %d %d\n", info->step_chg_cfg[i].low_threshold, info->step_chg_cfg[i].high_threshold, info->step_chg_cfg[i].value);
-
-	return ret;
-}
-
-static void check_cycle_count_status(struct charger_manager *info, bool farce_update)
+static void check_cycle_count_status(struct charger_manager *info, bool force_update)
 {
 	union power_supply_propval pval = {0,};
+	struct device_node *np = info->pdev->dev.of_node;
+	const char *prop_fv, *prop_fv_ffc, *prop_jeita_fcc, *prop_step_chg, *prop_jeita_fv;
+	int total_length = 0, i = 0, ret = 0;
 	bool update = false;
-	int ret = 0;
 
 	ret = power_supply_get_property(info->bms_psy, POWER_SUPPLY_PROP_CYCLE_COUNT, &pval);
-	if (ret && !farce_update) {
+	if (ret && !force_update) {
 		chr_err("failed to get cycle_count\n");
 		return;
 	}
 
 	info->cycle_count = pval.intval;
-	if (info->cycle_count <= 50) {
-		if (info->cycle_count_status != CYCLE_COUNT_LOW) {
-			info->cycle_count_status = CYCLE_COUNT_LOW;
+
+	if (info->cycle_count < 101) {
+		if (info->cycle_count_status != CYCLE_COUNT_0_100) {
+			info->cycle_count_status = CYCLE_COUNT_0_100;
 			update = true;
 		}
-	} else if (info->cycle_count <= 150) {
-		if (info->cycle_count_status != CYCLE_COUNT_NORMAL) {
-			info->cycle_count_status = CYCLE_COUNT_NORMAL;
+	} else if (info->cycle_count < 601) {
+		if (info->cycle_count_status != CYCLE_COUNT_101_600) {
+			info->cycle_count_status = CYCLE_COUNT_101_600;
+			update = true;
+		}
+	} else if (info->cycle_count < 801) {
+		if (info->cycle_count_status != CYCLE_COUNT_601_800) {
+			info->cycle_count_status = CYCLE_COUNT_601_800;
 			update = true;
 		}
 	} else {
-		if (info->cycle_count_status != CYCLE_COUNT_HIGH) {
-			info->cycle_count_status = CYCLE_COUNT_HIGH;
+		if (info->cycle_count_status != CYCLE_COUNT_801_9999) {
+			info->cycle_count_status = CYCLE_COUNT_801_9999;
 			update = true;
 		}
 	}
 
-	if (update || farce_update)
-		parse_cycle_count_step_chg_cfg(info);
+	if (!update && !force_update)
+		return;
 
-	return;
+	if (!np) {
+		chr_err("no device node\n");
+		return;
+	}
+
+	switch (info->cycle_count_status) {
+	case CYCLE_COUNT_0_100:
+		prop_fv        = "fv_0_100";
+		prop_fv_ffc    = "fv_ffc_0_100";
+		prop_jeita_fcc = "jeita_fcc_cfg_0_100";
+		prop_step_chg  = "step_chg_cfg_0_100";
+		prop_jeita_fv  = "jeita_fv_cfg_0_100";
+		break;
+	case CYCLE_COUNT_101_600:
+		prop_fv        = "fv_101_600";
+		prop_fv_ffc    = "fv_ffc_101_600";
+		prop_jeita_fcc = "jeita_fcc_cfg_101_600";
+		prop_step_chg  = "step_chg_cfg_101_600";
+		prop_jeita_fv  = "jeita_fv_cfg_101_600";
+		break;
+	case CYCLE_COUNT_601_800:
+		prop_fv        = "fv_601_800";
+		prop_fv_ffc    = "fv_ffc_601_800";
+		prop_jeita_fcc = "jeita_fcc_cfg_601_800";
+		prop_step_chg  = "step_chg_cfg_601_800";
+		prop_jeita_fv  = "jeita_fv_cfg_601_800";
+		break;
+	case CYCLE_COUNT_801_9999:
+		prop_fv        = "fv_801_9999";
+		prop_fv_ffc    = "fv_ffc_801_9999";
+		prop_jeita_fcc = "jeita_fcc_cfg_801_9999";
+		prop_step_chg  = "step_chg_cfg_801_9999";
+		prop_jeita_fv  = "jeita_fv_cfg_801_9999";
+		break;
+	default:
+		return;
+	}
+
+	ret = of_property_read_u32(np, prop_fv, &info->fv);
+	if (ret)
+		chr_err("failed to parse %s\n", prop_fv);
+
+	ret = of_property_read_u32(np, prop_fv_ffc, &info->fv_ffc);
+	if (ret)
+		chr_err("failed to parse %s\n", prop_fv_ffc);
+
+	total_length = of_property_count_elems_of_size(np, prop_jeita_fcc, sizeof(u32));
+	if (total_length < 0) {
+		chr_err("failed to read total_length of %s\n", prop_jeita_fcc);
+		return;
+	}
+	ret = of_property_read_u32_array(np, prop_jeita_fcc, (u32 *)info->jeita_fcc_cfg, total_length);
+	if (ret) {
+		chr_err("failed to parse %s\n", prop_jeita_fcc);
+		return;
+	}
+
+	total_length = of_property_count_elems_of_size(np, prop_step_chg, sizeof(u32));
+	if (total_length < 0) {
+		chr_err("failed to read total_length of %s\n", prop_step_chg);
+		return;
+	}
+	ret = of_property_read_u32_array(np, prop_step_chg, (u32 *)info->step_chg_cfg, total_length);
+	if (ret) {
+		chr_err("failed to parse %s\n", prop_step_chg);
+		return;
+	}
+
+	total_length = of_property_count_elems_of_size(np, prop_jeita_fv, sizeof(u32));
+	if (total_length < 0) {
+		chr_err("failed to read total_length of %s\n", prop_jeita_fv);
+		return;
+	}
+	ret = of_property_read_u32_array(np, prop_jeita_fv, (u32 *)info->jeita_fv_cfg, total_length);
+	if (ret) {
+		chr_err("failed to parse %s\n", prop_jeita_fv);
+		return;
+	}
+
+	for (i = 0; i < STEP_JEITA_TUPLE_COUNT; i++)
+		chr_info("STEP %d %d %d\n", info->step_chg_cfg[i].low_threshold,
+			 info->step_chg_cfg[i].high_threshold, info->step_chg_cfg[i].value);
 }
 
 void reset_mi_charge_alg(struct charger_manager *info)
@@ -414,8 +453,9 @@ int step_jeita_init(struct charger_manager *info, struct device *dev, int para)
 {
 	struct device_node *np = dev->of_node;
 	int total_length = 0, i = 0, ret = 0;
-	info->cycle_count_status = CYCLE_COUNT_LOW;
+
 	product_name = para;
+	info->cycle_count_status = CYCLE_COUNT_0_100;
 
 	if (!np) {
 		chr_err("no device node\n");
@@ -597,39 +637,33 @@ int step_jeita_init(struct charger_manager *info, struct device *dev, int para)
 
 		for (i = 0; i < STEP_JEITA_TUPLE_COUNT; i++)
 			chr_info("STEP %d %d %d\n", info->step_chg_cfg[i].low_threshold, info->step_chg_cfg[i].high_threshold, info->step_chg_cfg[i].value);
+
+		total_length = of_property_count_elems_of_size(np, "jeita_fcc_cfg", sizeof(u32));
+		if (total_length < 0) {
+			chr_err("failed to read total_length of config\n");
+			return -EINVAL;
+		}
+
+		ret = of_property_read_u32_array(np, "jeita_fcc_cfg", (u32 *)info->jeita_fcc_cfg, total_length);
+		if (ret) {
+			chr_err("failed to parse jeita_fcc_cfg\n");
+			return ret;
+		}
+
+		total_length = of_property_count_elems_of_size(np, "jeita_fv_cfg", sizeof(u32));
+		if (total_length < 0) {
+			chr_err("failed to read total_length of config\n");
+			return -EINVAL;
+		}
+
+		ret = of_property_read_u32_array(np, "jeita_fv_cfg", (u32 *)info->jeita_fv_cfg, total_length);
+		if (ret) {
+			chr_err("failed to parse jeita_fv_cfg\n");
+			return ret;
+		}
 	} else {
 		check_cycle_count_status(info, true);
 	}
-
-	total_length = of_property_count_elems_of_size(np, "jeita_fcc_cfg", sizeof(u32));
-	if (total_length < 0) {
-		chr_err("failed to read total_length of config\n");
-		return -EINVAL;
-	}
-
-	ret = of_property_read_u32_array(np, "jeita_fcc_cfg", (u32 *)info->jeita_fcc_cfg, total_length);
-	if (ret) {
-		chr_err("failed to parse jeita_fcc_cfg\n");
-		return ret;
-	}
-
-	for (i = 0; i < STEP_JEITA_TUPLE_COUNT; i++)
-		chr_info("JEITA_FCC %d %d %d %d %d\n", info->jeita_fcc_cfg[i].low_threshold, info->jeita_fcc_cfg[i].high_threshold, info->jeita_fcc_cfg[i].extra_threshold, info->jeita_fcc_cfg[i].low_value, info->jeita_fcc_cfg[i].high_value);
-
-	total_length = of_property_count_elems_of_size(np, "jeita_fv_cfg", sizeof(u32));
-	if (total_length < 0) {
-		chr_err("failed to read total_length of config\n");
-		return -EINVAL;
-	}
-
-	ret = of_property_read_u32_array(np, "jeita_fv_cfg", (u32 *)info->jeita_fv_cfg, total_length);
-	if (ret) {
-		chr_err("failed to parse jeita_fv_cfg\n");
-		return ret;
-	}
-
-	for (i = 0; i < STEP_JEITA_TUPLE_COUNT; i++)
-		chr_info("JEITA_FV %d %d %d\n", info->jeita_fv_cfg[i].low_threshold, info->jeita_fv_cfg[i].high_threshold, info->jeita_fv_cfg[i].value);
 
 	ret = of_property_read_u32(np, "step_fallback_hyst", &info->step_fallback_hyst);
 	if (ret) {
