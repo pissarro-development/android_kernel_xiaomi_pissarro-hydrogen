@@ -123,7 +123,7 @@ if make -j$(nproc --all) \
     echo -e "\nKernel compiled successfully! Packing into a zip archive...\n"
 
     # Cloning AnyKernel3
-    git clone -q --depth=1 --branch=master https://github.com/pissarro-development/anykernel3 anykernel3
+    git clone --depth=1 --branch=hydrogen-4.14.y https://github.com/pissarro-development/anykernel3.git anykernel3/
 
     # Copying the compiled images
     cp out/arch/arm64/boot/Image.gz anykernel3/
