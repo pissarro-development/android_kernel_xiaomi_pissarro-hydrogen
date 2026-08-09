@@ -66,7 +66,20 @@ done
 
 DEFCONFIG="${DEVICE}_defconfig"
 
-ZIPNAME="${KERNEL_NAME}Kernel-${KERNEL_VERSION}-${DEVICE}-${DATE}.zip"
+# Detect root solutions
+if compgen -G "kp/*" > /dev/null; then
+    VARIANT="apatch"
+    echo -e "\nAPatch detected - building APatch variant\n"
+elif compgen -G "KernelSU*/kernel/Makefile" > /dev/null || \
+     compgen -G "drivers/kernelsu/Makefile" > /dev/null; then
+    VARIANT="kernelsu"
+    echo -e "\nKernelSU detected - building KernelSU variant\n"
+else
+    VARIANT="vanilla"
+    echo -e "\nRoot solutions not detected - building vanilla variant\n"
+fi
+
+ZIPNAME="${KERNEL_NAME}Kernel-${KERNEL_VERSION}-${DEVICE}-${VARIANT}-${DATE}.zip"
 
 echo -e "Building for device: $DEVICE\n"
 
