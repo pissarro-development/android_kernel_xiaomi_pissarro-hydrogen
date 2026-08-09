@@ -405,7 +405,7 @@ else ifeq ($(CONFIG_MTK_COMBO_WIFI_HIF), ut)
 else ifeq ($(CONFIG_MTK_COMBO_WIFI_HIF), none)
 	ccflags-y += -D_HIF_NONE=1
 else
-    $(error Unsuppoted HIF=$(CONFIG_MTK_COMBO_WIFI_HIF)!!)
+    $(warning Unsuppoted HIF=$(CONFIG_MTK_COMBO_WIFI_HIF)!!)
 endif
 
 ifeq ($(CONFIG_MTK_WIFI_DOWNLOAD_DYN_MEMORY_MAP), y)
