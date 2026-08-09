@@ -22,21 +22,24 @@ ARGUMENTS:
     CODENAME        Device codename (default: pissarro)
 
 EXAMPLES:
-    $0                      # Build for default deviceZ
-    $0 <codename>           # Build for specific device
+    $0                      # Build for default device
     $0 -c                   # Clean build for default device
-    $0 --clean <codename>   # Clean build for specific device
+    $0 <codename>           # Build for specific device
+    $0 -c <codename>        # Clean build for specific device
 
 EOF
 }
 
 # Initial Setup
-SECONDS=0
-DATE=$(date '+%Y%m%d-%H%M')
+KERNEL_NAME="Hydrogen"
+KERNEL_VERSION="v1.1"
 
-# Default device
 DEVICE="pissarro"
+
 CLEAN_BUILD=false
+
+DATE=$(date '+%Y%m%d-%H%M')
+SECONDS=0
 
 # Parse arguments
 while [[ $# -gt 0 ]]; do
@@ -62,18 +65,19 @@ while [[ $# -gt 0 ]]; do
 done
 
 DEFCONFIG="${DEVICE}_defconfig"
-ZIPNAME="HydrogenKernel-${DEVICE}-${DATE}.zip"
 
-echo -e "\nBuilding for device: $DEVICE\n"
+ZIPNAME="${KERNEL_NAME}Kernel-${KERNEL_VERSION}-${DEVICE}-${DATE}.zip"
+
+echo -e "Building for device: $DEVICE\n"
 
 # Toolchain Setup
 CLANG_VERSION="clang-r547379"
 TC_DIR="$HOME/toolchains"
 if [ ! -d "$TC_DIR/$CLANG_VERSION" ]; then
     echo -e "Toolchain not found, downloading AOSP clang...\n"
-    git clone --depth=1 --branch=android16-release https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86 "$TC_DIR/.temp"
-    mv "$TC_DIR/.temp/$CLANG_VERSION" "$TC_DIR"
-    rm -rf "$TC_DIR/.temp"
+    git clone --depth=1 --branch=android16-release https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86 "$TC_DIR/.tmp/"
+    mv "$TC_DIR/.tmp/$CLANG_VERSION" "$TC_DIR"
+    rm -rf "$TC_DIR/.tmp/"
     echo -e "\nToolchain successfully downloaded and extracted!\n"
 fi
 export PATH="$TC_DIR/$CLANG_VERSION/bin:$PATH"
@@ -91,23 +95,29 @@ export SUBARCH=arm64
 # Apply defconfig
 echo -e "Preparing kernel configuration...\n"
 
-make O=out "../../arm64/configs/$DEFCONFIG"
+make O=out \
+     ARCH=$ARCH \
+     SUBARCH=$SUBARCH \
+     LLVM=1 \
+     LLVM_IAS=1 \
+     CC="ccache clang" \
+     CROSS_COMPILE=aarch64-linux-gnu- \
+     CROSS_COMPILE_ARM32=arm-linux-gnueabi- \
+     $DEFCONFIG
 
-# Start the build for Image.gz
+# Start the build
 echo -e "\nStarting kernel compilation...\n"
 
 if make -j$(nproc --all) \
-    O=out \
-    CC="ccache clang" \
-    AR=llvm-ar \
-    NM=llvm-nm \
-    LD=ld.lld \
-    STRIP=llvm-strip \
-    LLVM=1 \
-    LLVM_IAS=1 \
-    CROSS_COMPILE=aarch64-linux-gnu- \
-    CROSS_COMPILE_ARM32=arm-linux-gnueabi- \
-    Image.gz; then
+        O=out \
+        ARCH=$ARCH \
+        SUBARCH=$SUBARCH \
+        LLVM=1 \
+        LLVM_IAS=1 \
+        CC="ccache clang" \
+        CROSS_COMPILE=aarch64-linux-gnu- \
+        CROSS_COMPILE_ARM32=arm-linux-gnueabi- \
+        Image.gz; then
 
     echo -e "\nKernel compiled successfully! Packing into a zip archive...\n"
 
