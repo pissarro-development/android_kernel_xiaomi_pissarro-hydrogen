@@ -86,6 +86,7 @@ export PATH="$TC_DIR/$CLANG_VERSION/bin:$PATH"
 if [ "$CLEAN_BUILD" = true ]; then
     echo -e "Performing a full clean...\n"
     rm -rf out
+    make -i mrproper
 fi
 
 # Compilation Variables
