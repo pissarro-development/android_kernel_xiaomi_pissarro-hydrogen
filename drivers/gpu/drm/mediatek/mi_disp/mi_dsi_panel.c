@@ -1910,7 +1910,7 @@ int mi_dsi_panel_set_disp_param(struct mtk_dsi *dsi, struct disp_feature_ctl *ct
 
 	if (!panel->panel_initialized) {
 		DISP_ERROR("Panel not initialized!\n");
-		goto exit;
+		return rc;
 	}
 
 	mi_cfg = &dsi->mi_cfg;
@@ -2145,7 +2145,6 @@ int mi_dsi_panel_set_disp_param(struct mtk_dsi *dsi, struct disp_feature_ctl *ct
 		break;
 	}
 
-exit:
 	mutex_unlock(&dsi->dsi_lock);
 	return rc;
 }
