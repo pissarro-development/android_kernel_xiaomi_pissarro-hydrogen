@@ -106,5 +106,19 @@ int cpuidle_governor_latency_req(unsigned int cpu)
 	struct device *device = get_cpu_device(cpu);
 	int device_req = dev_pm_qos_raw_read_value(device);
 
+	/*
+	 * This helper comes from a kernel that carries the device resume
+	 * latency PM QoS rework, where an unconstrained device reports
+	 * PM_QOS_RESUME_LATENCY_NO_CONSTRAINT.  Here that rework is not
+	 * present (commit 0cc2b4e5a020 was reverted by commit d5919dcc349d),
+	 * so PM_QOS_RESUME_LATENCY_DEFAULT_VALUE is 0 and a value of 0 means
+	 * "no restriction" rather than "no latency tolerated at all".  Taking
+	 * it literally clamps the constraint to 0 for every CPU and pins the
+	 * governor to the shallowest idle state.  Handle it the same way
+	 * menu_select() does.
+	 */
+	if (!device_req)
+		return global_req;
+
 	return device_req < global_req ? device_req : global_req;
 }
