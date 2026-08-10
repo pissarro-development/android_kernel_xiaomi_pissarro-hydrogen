@@ -266,10 +266,12 @@ void ufs_mtk_pltfrm_gpio_trigger(int value)
 }
 #endif
 
+#define XOUFS_ACK_TIMEOUT_US	3000
+
 int ufs_mtk_pltfrm_xo_ufs_req(struct ufs_hba *hba, bool on)
 {
 	u32 value;
-	int retry;
+	ktime_t timeout, time_checked;
 
 	if (!hba->card) {
 		/*
@@ -326,22 +328,21 @@ int ufs_mtk_pltfrm_xo_ufs_req(struct ufs_hba *hba, bool on)
 	else
 		ufshcd_writel(hba, 0, REG_UFS_ADDR_XOUFS_ST);
 
-	retry = 3; /* 2.4ms wosrt case */
+	timeout = ktime_add_us(ktime_get(), XOUFS_ACK_TIMEOUT_US);
 	do {
+		time_checked = ktime_get();
 		value = ufshcd_readl(hba, REG_UFS_ADDR_XOUFS_ST);
 
 		if ((value == 0x3) || (value == 0))
 			break;
 
-		mdelay(1);
-		if (retry) {
-			retry--;
-		} else {
-			dev_err(hba->dev, "XO_UFS ack failed\n");
-			return -EIO;
-		}
-	} while (1);
+		usleep_range(100, 200);
+	} while (ktime_before(time_checked, timeout));
 
+	if ((value != 0x3) && (value != 0)) {
+		dev_err(hba->dev, "XO_UFS ack failed\n");
+		return -EIO;
+	}
 
 	/* Delay after enable ref-clk: enable ref-clk -> delay B -> leave H8
 	 *		delayB
