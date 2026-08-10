@@ -32,7 +32,7 @@ EOF
 
 # Initial Setup
 KERNEL_NAME="Hydrogen"
-KERNEL_VERSION="v1.1"
+KERNEL_VERSION="v2.0"
 
 DEVICE="pissarro"
 
