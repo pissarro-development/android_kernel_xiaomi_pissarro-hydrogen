@@ -34,6 +34,21 @@ enum FH_PLL_ID {
 	FH_PLL_NUM,
 };
 
+struct freqhopping_ssc {
+	unsigned int idx_pattern;
+	unsigned int dt;
+	unsigned int df;
+	unsigned int upbnd;
+	unsigned int lowbnd;
+	unsigned int dds;
+};
+
+struct freqhopping_ioctl {
+	unsigned int pll_id;
+	struct freqhopping_ssc ssc_setting; /* used only when user-define */
+	int result;
+};
+
 extern int mt_dfs_general_pll(unsigned int pll_id, unsigned int target_dds);
 
 #endif
