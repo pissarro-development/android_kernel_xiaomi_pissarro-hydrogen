@@ -20,9 +20,9 @@
 #ifdef CONFIG_MTK_FREQ_HOPPING
 #include <mtk_freqhopping_drv.h>
 #else
-#define FH_PLL0 0 /* LL : ARMPLL */
-#define FH_PLL1 1 /* L : ARMPLL_L */
-#define FH_PLL5 5 /* CCI : CCIPLL */
+#define FH_TOP_PLL0 0 /* LL : ARMPLL_LL */
+#define FH_TOP_PLL1 1 /* L : ARMPLL_BL0 */
+#define FH_TOP_PLL3 3 /* CCI : CCIPLL */
 #endif
 
 #include "mtk_cpufreq_platform.h"
@@ -520,21 +520,21 @@ struct pll_ctrl_t pll_ctrl[NR_MT_PLL] = {
 [PLL_LL_CLUSTER] = {
 		.name		= __stringify(PLL_LL_CLUSTER),
 		.pll_id		= PLL_LL_CLUSTER,
-		.hopping_id	= FH_PLL0,	/* ARMPLL1 */
+		.hopping_id	= FH_TOP_PLL0,	/* ARMPLL_LL */
 		.pll_ops	= &pll_ops_ll,
 	},
 
 	[PLL_L_CLUSTER] = {
 		.name		= __stringify(PLL_L_CLUSTER),
 		.pll_id		= PLL_L_CLUSTER,
-		.hopping_id	= FH_PLL1,	/* ARMPLL2 */
+		.hopping_id	= FH_TOP_PLL1,	/* ARMPLL_BL0 */
 		.pll_ops	= &pll_ops_l,
 	},
 
 	[PLL_CCI_CLUSTER] = {
 		.name		= __stringify(PLL_CCI_CLUSTER),
 		.pll_id		= PLL_CCI_CLUSTER,
-		.hopping_id	= FH_PLL5,	/* CCIPLL */
+		.hopping_id	= FH_TOP_PLL3,	/* CCIPLL */
 		.pll_ops	= &pll_ops_cci,
 	},
 };
