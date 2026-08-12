@@ -734,6 +734,27 @@ else
 KBUILD_CFLAGS   += -O2
 endif
 
+ifdef CONFIG_ROOT_KSU
+ifndef CONFIG_KSU_TAMPER_SYSCALL_TABLE
+ifndef CONFIG_KSU_HACK_ARM64_BRANCH_LINK
+KBUILD_CFLAGS += -DKSU_SUCOMPAT_SM_MANUAL_HOOK
+endif
+ifndef CONFIG_KSU_KPROBES_KSUD
+KBUILD_CFLAGS += -DKSU_KSUD_SM_MANUAL_HOOK
+endif
+endif
+else ifdef CONFIG_ROOT_KSN
+ifdef CONFIG_KSU_MANUAL_HOOK
+KBUILD_CFLAGS += -DKSU_SUCOMPAT_SM_MANUAL_HOOK
+KBUILD_CFLAGS += -DKSU_KSUD_SM_MANUAL_HOOK
+endif
+else ifdef CONFIG_ROOT_RSS
+ifdef CONFIG_KSU_MANUAL_HOOK
+KBUILD_CFLAGS += -DKSU_SUCOMPAT_SM_MANUAL_HOOK
+KBUILD_CFLAGS += -DKSU_KSUD_SM_MANUAL_HOOK
+endif
+endif
+
 # Tell gcc to never replace conditional load with a non-conditional one
 KBUILD_CFLAGS	+= $(call cc-option,--param=allow-store-data-races=0)
 KBUILD_CFLAGS	+= $(call cc-option,-fno-allow-store-data-races)
