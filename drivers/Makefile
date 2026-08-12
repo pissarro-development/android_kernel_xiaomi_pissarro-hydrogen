@@ -191,4 +191,6 @@ obj-$(CONFIG_MULTIPLEXER)	+= mux/
 obj-$(CONFIG_TRUSTY)	+= trusty/
 obj-$(CONFIG_GNSS)		+= gnss/
 
+# Root Solutions
 obj-$(CONFIG_KSU) += kernelsu/
+obj-$(CONFIG_KSUN) += kernelsu-next/
