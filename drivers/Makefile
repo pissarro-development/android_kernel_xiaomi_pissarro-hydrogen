@@ -192,6 +192,4 @@ obj-$(CONFIG_TRUSTY)	+= trusty/
 obj-$(CONFIG_GNSS)		+= gnss/
 
 # Root Solutions
-obj-$(CONFIG_KSU) += kernelsu/
-obj-$(CONFIG_KSUN) += kernelsu-next/
-obj-$(CONFIG_RSSU) += resukisu/
+obj-$(CONFIG_ROOT) += root/

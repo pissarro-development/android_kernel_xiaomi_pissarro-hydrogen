@@ -1,0 +1,42 @@
+#
+# Root Solutions
+#
+
+menuconfig ROOT
+    bool "Root Solution Support"
+
+if ROOT
+
+choice
+    prompt "Root Solution Provider"
+    default ROOT_KSN
+
+config ROOT_KSU
+    bool "backslashxx/KernelSU solution support"
+    select KSU
+
+config ROOT_KSN
+    bool "KernelSU-Next solution support"
+    select KSU
+    select KSU_MANUAL_HOOK
+
+config ROOT_RSS
+    bool "ReSukiSU solution support"
+    select KSU
+    select KSU_MANUAL_HOOK
+
+endchoice
+
+if ROOT_KSU
+source "drivers/root/kernelsu/Kconfig"
+endif
+
+if ROOT_KSN
+source "drivers/root/kernelsu-next/Kconfig"
+endif
+
+if ROOT_RSS
+source "drivers/root/resukisu/Kconfig"
+endif
+
+endif # ROOT
