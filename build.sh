@@ -71,11 +71,11 @@ ZIPNAME="${KERNEL_NAME}Kernel-${KERNEL_VERSION}-${DEVICE}-${DATE}.zip"
 echo -e "Building for device: $DEVICE\n"
 
 # Toolchain Setup
-CLANG_VERSION="clang-r547379"
+CLANG_VERSION="clang-r563880c"
 TC_DIR="$HOME/toolchains"
 if [ ! -d "$TC_DIR/$CLANG_VERSION" ]; then
     echo -e "Toolchain not found, downloading AOSP clang...\n"
-    git clone --depth=1 --branch=android16-release https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86 "$TC_DIR/.tmp/"
+    git clone --depth=1 --branch=android-16.0.0_r4 https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86 "$TC_DIR/.tmp/"
     mv "$TC_DIR/.tmp/$CLANG_VERSION" "$TC_DIR"
     rm -rf "$TC_DIR/.tmp/"
     echo -e "\nToolchain successfully downloaded and extracted!\n"
