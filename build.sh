@@ -125,6 +125,10 @@ if make -j$(nproc --all) \
     # Cloning AnyKernel3
     git clone --depth=1 --branch=hydrogen-4.14.y https://github.com/pissarro-development/anykernel3.git anykernel3/
 
+    # Copying the prebuilts images
+    cp prebuilts/dtbo.img anykernel3/
+    cp prebuilts/dtb.img anykernel3/
+
     # Copying the compiled images
     cp out/arch/arm64/boot/Image.gz anykernel3/
 
