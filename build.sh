@@ -10,22 +10,23 @@ set -e
 # Function to display help message
 show_help() {
     cat << EOF
-Usage: $0 [OPTIONS] [CODENAME]
-
 Build script for Hydrogen Kernel
 
+Usage: $0 [OPTIONS] [CODENAME]
+
 OPTIONS:
-    -h, --help      Show this help message and exit
-    -c, --clean     Perform a full clean build (removes out directory)
+    -h, --help               Show this help message and exit
+    -c, --clean              Perform a full clean build (removes out directory)
+    -v, --variant <variant>  Select build variant:
+                             - vanilla  (Vanilla)
+                             - ksu      (KernelSU with SuSFS)
+                             - ksunext  (KernelSU-Next with SuSFS)
+                             - resukisu (ReSukiSU with SuSFS)
+                             (default: vanilla)
 
 ARGUMENTS:
-    CODENAME        Device codename (default: pissarro)
-
-EXAMPLES:
-    $0                      # Build for default device
-    $0 -c                   # Clean build for default device
-    $0 <codename>           # Build for specific device
-    $0 -c <codename>        # Clean build for specific device
+    CODENAME                 Device codename
+                             (default: pissarro)
 
 EOF
 }
@@ -34,9 +35,9 @@ EOF
 KERNEL_NAME="Hydrogen"
 KERNEL_VERSION="v2.0"
 
-DEVICE="pissarro"
-
 CLEAN_BUILD=false
+VARIANT="vanilla"
+DEVICE="pissarro"
 
 DATE=$(date '+%Y%m%d-%H%M')
 SECONDS=0
@@ -52,6 +53,15 @@ while [[ $# -gt 0 ]]; do
             CLEAN_BUILD=true
             shift
             ;;
+        -v|--variant)
+            if [[ -n "$2" && "$2" != -* ]]; then
+                VARIANT="$2"
+                shift 2
+            else
+                echo "Error: Argument for $1 is missing"
+                exit 1
+            fi
+            ;;
         -*)
             echo "Error: Unknown option: $1"
             echo "Use -h or --help for usage information"
@@ -64,11 +74,32 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
+# Validate build variant
+case "${VARIANT,,}" in
+    vanilla)
+        VARIANT_NAME="Vanilla"
+        ;;
+    ksu)
+        VARIANT_NAME="KernelSU with SuSFS"
+        ;;
+    ksunext)
+        VARIANT_NAME="KernelSU-Next with SuSFS"
+        ;;
+    resukisu)
+        VARIANT_NAME="ReSukiSU with SuSFS"
+        ;;
+    *)
+        echo "Error: Invalid variant '$VARIANT_NAME'!"
+        echo "Supported variants: Vanilla, KernelSU, KernelSU-Next, ReSukiSU"
+        exit 1
+        ;;
+esac
+
 DEFCONFIG="${DEVICE}_defconfig"
+ZIPNAME="${KERNEL_NAME}Kernel-${KERNEL_VERSION}-${DEVICE}-${VARIANT}-${DATE}.zip"
 
-ZIPNAME="${KERNEL_NAME}Kernel-${KERNEL_VERSION}-${DEVICE}-${DATE}.zip"
-
-echo -e "Building for device: $DEVICE\n"
+echo -e "Building for device: $DEVICE"
+echo -e "Building variant: $VARIANT_NAME\n"
 
 # Toolchain Setup
 CLANG_VERSION="clang-r563880c"
@@ -78,7 +109,7 @@ if [ ! -d "$TC_DIR/$CLANG_VERSION" ]; then
     git clone --depth=1 --branch=android-16.0.0_r4 https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86 "$TC_DIR/.tmp/"
     mv "$TC_DIR/.tmp/$CLANG_VERSION" "$TC_DIR"
     rm -rf "$TC_DIR/.tmp/"
-    echo -e "\nToolchain successfully downloaded and extracted!\n"
+    echo -e "Toolchain successfully downloaded and extracted!\n"
 fi
 export PATH="$TC_DIR/$CLANG_VERSION/bin:$PATH"
 
@@ -94,7 +125,7 @@ export ARCH=arm64
 export SUBARCH=arm64
 
 # Apply defconfig
-echo -e "Preparing kernel configuration...\n"
+echo -e "\nPreparing kernel configuration...\n"
 
 make O=out \
      ARCH=$ARCH \
@@ -105,6 +136,24 @@ make O=out \
      CROSS_COMPILE=aarch64-linux-gnu- \
      CROSS_COMPILE_ARM32=arm-linux-gnueabi- \
      $DEFCONFIG
+
+# Apply root solution config
+echo -e "\nPreparing root solution configuration for $VARIANT_NAME...\n"
+
+./scripts/kconfig/merge_config.sh -m \
+                                  -O out \
+                                  out/.config \
+                                  arch/arm64/configs/root/$VARIANT.config
+
+make O=out \
+     ARCH=$ARCH \
+     SUBARCH=$SUBARCH \
+     LLVM=1 \
+     LLVM_IAS=1 \
+     CC="ccache clang" \
+     CROSS_COMPILE=aarch64-linux-gnu- \
+     CROSS_COMPILE_ARM32=arm-linux-gnueabi- \
+     olddefconfig
 
 # Start the build
 echo -e "\nStarting kernel compilation...\n"
