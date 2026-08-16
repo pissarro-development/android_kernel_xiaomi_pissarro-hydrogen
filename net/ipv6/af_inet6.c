@@ -442,7 +442,6 @@ out_unlock:
 	rcu_read_unlock();
 	goto out;
 }
-EXPORT_SYMBOL(inet6_bind);
 
 /* bind for INET6 API */
 int inet6_bind(struct socket *sock, struct sockaddr *uaddr, int addr_len)

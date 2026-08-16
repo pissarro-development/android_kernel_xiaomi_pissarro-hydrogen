@@ -458,22 +458,12 @@ int __inet_bind(struct sock *sk, struct sockaddr *uaddr, int addr_len,
 		u32 flags)
 {
 	struct sockaddr_in *addr = (struct sockaddr_in *)uaddr;
-	struct sock *sk = sock->sk;
 	struct inet_sock *inet = inet_sk(sk);
 	struct net *net = sock_net(sk);
 	unsigned short snum;
 	int chk_addr_ret;
 	u32 tb_id = RT_TABLE_LOCAL;
 	int err;
-
-	/* If the socket has its own bind function then use it. (RAW) */
-	if (sk->sk_prot->bind) {
-		err = sk->sk_prot->bind(sk, uaddr, addr_len);
-		goto out;
-	}
-	err = -EINVAL;
-	if (addr_len < sizeof(struct sockaddr_in))
-		goto out;
 
 	if (addr->sin_family != AF_INET) {
 		/* Compatibility games : accept AF_UNSPEC (mapped to AF_INET)
@@ -561,7 +551,6 @@ out_release_sock:
 out:
 	return err;
 }
-EXPORT_SYMBOL(inet_bind);
 
 int inet_dgram_connect(struct socket *sock, struct sockaddr *uaddr,
 		       int addr_len, int flags)

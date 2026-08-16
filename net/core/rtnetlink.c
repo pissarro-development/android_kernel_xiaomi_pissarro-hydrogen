@@ -1343,12 +1343,10 @@ static u32 rtnl_xdp_prog_skb(struct net_device *dev)
 	ASSERT_RTNL();
 
 	generic_xdp_prog = rtnl_dereference(dev->xdp_prog);
-	if (generic_xdp_prog) {
-		*prog_id = generic_xdp_prog->aux->id;
-		return XDP_ATTACHED_SKB;
-	}
-	if (!ops->ndo_bpf)
-		return XDP_ATTACHED_NONE;
+	if (!generic_xdp_prog)
+		return 0;
+	return generic_xdp_prog->aux->id;
+}
 
 static u32 rtnl_xdp_prog_drv(struct net_device *dev)
 {
