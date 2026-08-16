@@ -29,6 +29,7 @@
 #include <asm/param.h>		/* for HZ		*/
 #include <asm/unistd32.h>
 #include <linux/compiler.h>
+#include <uapi/linux/types.h>	/* for u64, no longer pulled in by compiler.h */
 
 #ifdef CONFIG_ARM_ARCH_TIMER
 #define ARCH_PROVIDES_TIMER
