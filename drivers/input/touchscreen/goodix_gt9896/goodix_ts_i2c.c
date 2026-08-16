@@ -434,7 +434,7 @@ int goodix_i2c_write_trans(struct goodix_ts_device *dev, unsigned int reg,
 	unsigned char put_buf[64];
 	int retry, r = 0;
 #ifdef DEBUG_STABILITY_ENABLE
-	write_start_time = ktime_get_boot_ns();
+	write_start_time = ktime_get_boottime_ns();
 #endif
 	struct i2c_msg msg = {
 			.addr = client->addr,
@@ -483,7 +483,7 @@ int goodix_i2c_write_trans(struct goodix_ts_device *dev, unsigned int reg,
 
 write_exit:
 #ifdef DEBUG_STABILITY_ENABLE
-	write_end_time = ktime_get_boot_ns();
+	write_end_time = ktime_get_boottime_ns();
 	/* if((write_end_time - write_start_time) > 500000) */
 		ts_err("goodix--write time = %d\n", write_end_time - write_start_time);
 #endif
@@ -1748,7 +1748,7 @@ static int goodix_event_handler(struct goodix_ts_device *dev,
 	}
 
 #ifdef DEBUG_STABILITY_ENABLE
-	read_start_time = ktime_get_boot_ns();
+	read_start_time = ktime_get_boottime_ns();
 #endif
 	r = goodix_i2c_read_trans(dev, dev->reg.coor, pre_buf, pre_read_len);
 	if (unlikely(r < 0))
@@ -1759,7 +1759,7 @@ static int goodix_event_handler(struct goodix_ts_device *dev,
 #endif
 
 #ifdef DEBUG_STABILITY_ENABLE
-	read_end_time = ktime_get_boot_ns();
+	read_end_time = ktime_get_boottime_ns();
 	/* if((read_end_time - read_start_time) > 500000) */
 		ts_err("goodix--read time = %d\n", read_end_time - read_start_time);
 #endif
