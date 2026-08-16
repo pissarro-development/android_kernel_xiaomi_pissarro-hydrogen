@@ -307,12 +307,68 @@ static void charge_monitor_func(struct work_struct *work)
 	schedule_delayed_work(&info->charge_monitor_work, msecs_to_jiffies(FCC_DESCENT_DELAY));
 }
 
+static const char *select_cycle_count_prop(struct device_node *np, const char *prop,
+					   const char *legacy, const char *common)
+{
+	if (of_find_property(np, prop, NULL))
+		return prop;
+
+	if (legacy && of_find_property(np, legacy, NULL)) {
+		chr_err("%s not found, falling back to %s\n", prop, legacy);
+		return legacy;
+	}
+
+	if (of_find_property(np, common, NULL)) {
+		chr_err("%s not found, falling back to %s\n", prop, common);
+		return common;
+	}
+
+	chr_err("%s not found, no fallback available\n", prop);
+
+	return NULL;
+}
+
+static const char *legacy_step_chg_prop(int cycle_count)
+{
+	if (cycle_count <= 50)
+		return "step_chg_cfg_low_cycle";
+	else if (cycle_count <= 150)
+		return "step_chg_cfg_normal_cycle";
+	else
+		return "step_chg_cfg_high_cycle";
+}
+
+static int parse_cycle_count_cfg(struct device_node *np, const char *prop, u32 *cfg, int max_length)
+{
+	int total_length = 0, ret = 0;
+
+	if (!prop)
+		return -EINVAL;
+
+	total_length = of_property_count_elems_of_size(np, prop, sizeof(u32));
+	if (total_length < 0) {
+		chr_err("failed to read total_length of %s\n", prop);
+		return total_length;
+	}
+
+	if (total_length > max_length) {
+		chr_err("%s holds %d elements, using the first %d\n", prop, total_length, max_length);
+		total_length = max_length;
+	}
+
+	ret = of_property_read_u32_array(np, prop, cfg, total_length);
+	if (ret)
+		chr_err("failed to parse %s\n", prop);
+
+	return ret;
+}
+
 static void check_cycle_count_status(struct charger_manager *info, bool force_update)
 {
 	union power_supply_propval pval = {0,};
 	struct device_node *np = info->pdev->dev.of_node;
 	const char *prop_fv, *prop_fv_ffc, *prop_jeita_fcc, *prop_step_chg, *prop_jeita_fv;
-	int total_length = 0, i = 0, ret = 0;
+	int i = 0, ret = 0;
 	bool update = false;
 
 	ret = power_supply_get_property(info->bms_psy, POWER_SUPPLY_PROP_CYCLE_COUNT, &pval);
@@ -386,46 +442,33 @@ static void check_cycle_count_status(struct charger_manager *info, bool force_up
 		return;
 	}
 
-	ret = of_property_read_u32(np, prop_fv, &info->fv);
-	if (ret)
-		chr_err("failed to parse %s\n", prop_fv);
+	prop_fv        = select_cycle_count_prop(np, prop_fv, NULL, "fv");
+	prop_fv_ffc    = select_cycle_count_prop(np, prop_fv_ffc, NULL, "fv_ffc");
+	prop_jeita_fcc = select_cycle_count_prop(np, prop_jeita_fcc, NULL, "jeita_fcc_cfg");
+	prop_step_chg  = select_cycle_count_prop(np, prop_step_chg,
+						 legacy_step_chg_prop(info->cycle_count), "step_chg_cfg");
+	prop_jeita_fv  = select_cycle_count_prop(np, prop_jeita_fv, NULL, "jeita_fv_cfg");
 
-	ret = of_property_read_u32(np, prop_fv_ffc, &info->fv_ffc);
-	if (ret)
-		chr_err("failed to parse %s\n", prop_fv_ffc);
-
-	total_length = of_property_count_elems_of_size(np, prop_jeita_fcc, sizeof(u32));
-	if (total_length < 0) {
-		chr_err("failed to read total_length of %s\n", prop_jeita_fcc);
-		return;
-	}
-	ret = of_property_read_u32_array(np, prop_jeita_fcc, (u32 *)info->jeita_fcc_cfg, total_length);
-	if (ret) {
-		chr_err("failed to parse %s\n", prop_jeita_fcc);
-		return;
+	if (prop_fv) {
+		ret = of_property_read_u32(np, prop_fv, &info->fv);
+		if (ret)
+			chr_err("failed to parse %s\n", prop_fv);
 	}
 
-	total_length = of_property_count_elems_of_size(np, prop_step_chg, sizeof(u32));
-	if (total_length < 0) {
-		chr_err("failed to read total_length of %s\n", prop_step_chg);
-		return;
-	}
-	ret = of_property_read_u32_array(np, prop_step_chg, (u32 *)info->step_chg_cfg, total_length);
-	if (ret) {
-		chr_err("failed to parse %s\n", prop_step_chg);
-		return;
+	if (prop_fv_ffc) {
+		ret = of_property_read_u32(np, prop_fv_ffc, &info->fv_ffc);
+		if (ret)
+			chr_err("failed to parse %s\n", prop_fv_ffc);
 	}
 
-	total_length = of_property_count_elems_of_size(np, prop_jeita_fv, sizeof(u32));
-	if (total_length < 0) {
-		chr_err("failed to read total_length of %s\n", prop_jeita_fv);
-		return;
-	}
-	ret = of_property_read_u32_array(np, prop_jeita_fv, (u32 *)info->jeita_fv_cfg, total_length);
-	if (ret) {
-		chr_err("failed to parse %s\n", prop_jeita_fv);
-		return;
-	}
+	parse_cycle_count_cfg(np, prop_jeita_fcc, (u32 *)info->jeita_fcc_cfg,
+			      STEP_JEITA_TUPLE_COUNT * (sizeof(struct step_jeita_cfg1) / sizeof(u32)));
+
+	parse_cycle_count_cfg(np, prop_step_chg, (u32 *)info->step_chg_cfg,
+			      STEP_JEITA_TUPLE_COUNT * (sizeof(struct step_jeita_cfg0) / sizeof(u32)));
+
+	parse_cycle_count_cfg(np, prop_jeita_fv, (u32 *)info->jeita_fv_cfg,
+			      STEP_JEITA_TUPLE_COUNT * (sizeof(struct step_jeita_cfg0) / sizeof(u32)));
 
 	for (i = 0; i < STEP_JEITA_TUPLE_COUNT; i++)
 		chr_info("STEP %d %d %d\n", info->step_chg_cfg[i].low_threshold,
@@ -456,6 +499,8 @@ int step_jeita_init(struct charger_manager *info, struct device *dev, int para)
 
 	product_name = para;
 	info->cycle_count_status = CYCLE_COUNT_0_100;
+
+	INIT_DELAYED_WORK(&info->charge_monitor_work, charge_monitor_func);
 
 	if (!np) {
 		chr_err("no device node\n");
@@ -688,8 +733,6 @@ int step_jeita_init(struct charger_manager *info, struct device *dev, int para)
 		chr_err("failed to parse jeita_forward_hyst\n");
 		return ret;
 	}
-
-	INIT_DELAYED_WORK(&info->charge_monitor_work, charge_monitor_func);
 
 	return ret;
 }
