@@ -451,7 +451,8 @@ int get_panel_dead_flag(void) {
 EXPORT_SYMBOL(get_panel_dead_flag);
 
 int set_panel_dead_flag(int value) {
-	return atomic_set(&panel_dead, value);
+	atomic_set(&panel_dead, value);
+	return 0;
 }
 EXPORT_SYMBOL(set_panel_dead_flag);
 

@@ -764,9 +764,9 @@ static inline void vmci_q_set_pointer(atomic64_t *var,
 				      u64 new_val)
 {
 #if defined(CONFIG_X86_32)
-	return atomic_set((atomic_t *)var, (u32)new_val);
+	atomic_set((atomic_t *)var, (u32)new_val);
 #else
-	return atomic64_set(var, new_val);
+	atomic64_set(var, new_val);
 #endif
 }
 
