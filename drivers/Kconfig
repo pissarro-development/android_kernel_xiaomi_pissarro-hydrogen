@@ -222,4 +222,6 @@ source "drivers/p73-spi/Kconfig"
 source "drivers/kernelsu/Kconfig"
 
 source "drivers/kernelsu-next/Kconfig"
+
+source "drivers/resukisu/Kconfig"
 endmenu

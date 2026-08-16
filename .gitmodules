@@ -4,3 +4,6 @@
 [submodule "KernelSU-Next"]
 	path = KernelSU-Next
 	url = https://github.com/z3rokwq/KernelSU-Next.git
+[submodule "ReSukiSU"]
+	path = ReSukiSU
+	url = https://github.com/z3rokwq/ReSukiSU.git

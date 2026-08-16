@@ -194,3 +194,4 @@ obj-$(CONFIG_GNSS)		+= gnss/
 # Root Solutions
 obj-$(CONFIG_KSU) += kernelsu/
 obj-$(CONFIG_KSUN) += kernelsu-next/
+obj-$(CONFIG_RSSU) += resukisu/
