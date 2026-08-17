@@ -25,8 +25,12 @@ static noinline int tracing_mark_write(const char *buf)
 void trace_tag_begin(const char *format, ...)
 {
 	char buf[TRACE_LEN];
+	int len;
 
-	int len = snprintf(buf, sizeof(buf),
+	if (!IS_ENABLED(CONFIG_MTK_SCHED_TRACERS))
+		return;
+
+	len = snprintf(buf, sizeof(buf),
 		"B|%d|%s", task_pid_nr(current), format);
 
 	if (len >= TRACE_LEN)
@@ -39,8 +43,12 @@ EXPORT_SYMBOL(trace_tag_begin);
 void trace_tag_end(void)
 {
 	char buf[TRACE_LEN];
+	int len;
 
-	int len = snprintf(buf, sizeof(buf), "E\n");
+	if (!IS_ENABLED(CONFIG_MTK_SCHED_TRACERS))
+		return;
+
+	len = snprintf(buf, sizeof(buf), "E\n");
 
 	if (len >= TRACE_LEN)
 		len = TRACE_LEN - 1;
@@ -53,6 +61,9 @@ void trace_async_tag(bool isBegin, const char *format, ...)
 {
 	char buf[TRACE_LEN];
 	int len = 0;
+
+	if (!IS_ENABLED(CONFIG_MTK_SCHED_TRACERS))
+		return;
 
 	if (isBegin)
 		len = snprintf(buf, sizeof(buf),

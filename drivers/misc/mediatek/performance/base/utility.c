@@ -77,6 +77,10 @@ int check_group_proc_write(int *cgroup, int *data,
 }
 
 #ifdef CONFIG_TRACING
+#ifdef CONFIG_MTK_SCHED_TRACERS
+#define perfmgr_systrace(fmt, args...)					\
+	event_trace_printk(tracing_mark_write_addr, fmt, ##args)
+
 static unsigned long __read_mostly tracing_mark_write_addr;
 static inline void __mt_update_tracing_mark_write_addr(void)
 {
@@ -84,12 +88,20 @@ static inline void __mt_update_tracing_mark_write_addr(void)
 		tracing_mark_write_addr =
 			kallsyms_lookup_name("tracing_mark_write");
 }
+#else
+#define perfmgr_systrace(fmt, args...)	no_printk(fmt, ##args)
+
+static inline void __mt_update_tracing_mark_write_addr(void) { }
+#endif
 
 void perfmgr_trace_count(int val, const char *fmt, ...)
 {
 	char log[128];
 	va_list args;
 	int len;
+
+	if (!IS_ENABLED(CONFIG_MTK_SCHED_TRACERS))
+		return;
 
 	if (!strstr(CONFIG_MTK_PLATFORM, "mt8")) {
 		if (powerhal_tid <= 0)
@@ -110,11 +122,9 @@ void perfmgr_trace_count(int val, const char *fmt, ...)
 	preempt_disable();
 
 	if (!strstr(CONFIG_MTK_PLATFORM, "mt8")) {
-		event_trace_printk(tracing_mark_write_addr, "C|%d|%s|%d\n",
-			powerhal_tid, log, val);
+		perfmgr_systrace("C|%d|%s|%d\n", powerhal_tid, log, val);
 	} else {
-		event_trace_printk(tracing_mark_write_addr, "C|%s|%d\n",
-			log, val);
+		perfmgr_systrace("C|%s|%d\n", log, val);
 	}
 
 	preempt_enable();
@@ -122,27 +132,35 @@ void perfmgr_trace_count(int val, const char *fmt, ...)
 
 void perfmgr_trace_printk(char *module, char *string)
 {
+	if (!IS_ENABLED(CONFIG_MTK_SCHED_TRACERS))
+		return;
+
 	__mt_update_tracing_mark_write_addr();
 	preempt_disable();
-	event_trace_printk(tracing_mark_write_addr, "%d [%s] %s\n",
-			current->tgid, module, string);
+	perfmgr_systrace("%d [%s] %s\n", current->tgid, module, string);
 	preempt_enable();
 }
 
 void perfmgr_trace_begin(char *name, int id, int a, int b)
 {
+	if (!IS_ENABLED(CONFIG_MTK_SCHED_TRACERS))
+		return;
+
 	__mt_update_tracing_mark_write_addr();
 	preempt_disable();
-	event_trace_printk(tracing_mark_write_addr, "B|%d|%s|%d|%d|%d\n",
+	perfmgr_systrace("B|%d|%s|%d|%d|%d\n",
 			current->tgid, name, id, a, b);
 	preempt_enable();
 }
 
 void perfmgr_trace_end(void)
 {
+	if (!IS_ENABLED(CONFIG_MTK_SCHED_TRACERS))
+		return;
+
 	__mt_update_tracing_mark_write_addr();
 	preempt_disable();
-	event_trace_printk(tracing_mark_write_addr, "E\n");
+	perfmgr_systrace("E\n");
 	preempt_enable();
 }
 
@@ -151,6 +169,9 @@ void perfmgr_trace_log(char *module, const char *fmt, ...)
 	char log[256];
 	va_list args;
 	int len;
+
+	if (!IS_ENABLED(CONFIG_MTK_SCHED_TRACERS))
+		return;
 
 	va_start(args, fmt);
 	len = vsnprintf(log, sizeof(log), fmt, args);

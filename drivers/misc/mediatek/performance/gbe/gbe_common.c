@@ -59,6 +59,10 @@ enum GBE_BOOST_DEVICE {
 	GBE_BOOST_NUM = 7,
 };
 
+#ifdef CONFIG_MTK_SCHED_TRACERS
+#define gbe_systrace(fmt, args...)					\
+	event_trace_printk(tracing_mark_write_addr, fmt, ##args)
+
 static unsigned long __read_mostly tracing_mark_write_addr;
 static inline void __mt_update_tracing_mark_write_addr(void)
 {
@@ -66,12 +70,20 @@ static inline void __mt_update_tracing_mark_write_addr(void)
 		tracing_mark_write_addr =
 			kallsyms_lookup_name("tracing_mark_write");
 }
+#else
+#define gbe_systrace(fmt, args...)	no_printk(fmt, ##args)
+
+static inline void __mt_update_tracing_mark_write_addr(void) { }
+#endif
+
 void gbe_trace_printk(int pid, char *module, char *string)
 {
+	if (!IS_ENABLED(CONFIG_MTK_SCHED_TRACERS))
+		return;
+
 	__mt_update_tracing_mark_write_addr();
 	preempt_disable();
-	event_trace_printk(tracing_mark_write_addr, "%d [%s] %s\n",
-			pid, module, string);
+	gbe_systrace("%d [%s] %s\n", pid, module, string);
 	preempt_enable();
 }
 
@@ -81,6 +93,9 @@ void gbe_trace_count(int tid, unsigned long long bufID,
 	char log[32];
 	va_list args;
 	int len;
+
+	if (!IS_ENABLED(CONFIG_MTK_SCHED_TRACERS))
+		return;
 
 	memset(log, ' ', sizeof(log));
 	va_start(args, fmt);
@@ -97,14 +112,12 @@ void gbe_trace_count(int tid, unsigned long long bufID,
 
 	if (!strstr(CONFIG_MTK_PLATFORM, "mt8")) {
 		if (!bufID)
-			event_trace_printk(tracing_mark_write_addr, "C|%d|%s|%d\n",
-				tid, log, val);
+			gbe_systrace("C|%d|%s|%d\n", tid, log, val);
 		else
-			event_trace_printk(tracing_mark_write_addr, "C|%d|%s|%d|0x%llx\n",
+			gbe_systrace("C|%d|%s|%d|0x%llx\n",
 					tid, log, val, bufID);
 	} else {
-		event_trace_printk(tracing_mark_write_addr, "C|%s|%d\n",
-				log, val);
+		gbe_systrace("C|%s|%d\n", log, val);
 	}
 
 	preempt_enable();

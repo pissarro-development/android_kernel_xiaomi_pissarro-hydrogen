@@ -1359,7 +1359,7 @@ void osal_op_raise_signal(P_OSAL_OP pOp, int result)
 int osal_ftrace_print(const char *str, ...)
 {
 	int ret = 0;
-#ifdef CONFIG_TRACING
+#if defined(CONFIG_TRACING) && defined(CONFIG_MTK_SCHED_TRACERS)
 	va_list args;
 	char tempString[DBG_LOG_STR_SIZE];
 
@@ -1563,26 +1563,32 @@ static inline void osal_systrace_prepare(void)
 
 static void osal_systrace_b(const char *log)
 {
+#ifdef CONFIG_MTK_SCHED_TRACERS
 	osal_systrace_prepare();
 	preempt_disable();
 	KERNEL_event_trace_printk(mark_addr, "B|%d|%s\n", g_pid, log);
 	preempt_enable();
+#endif
 }
 
 
 static void osal_systrace_e(void)
 {
+#ifdef CONFIG_MTK_SCHED_TRACERS
 	preempt_disable();
 	KERNEL_event_trace_printk(mark_addr, "E\n");
 	preempt_enable();
+#endif
 }
 
 static void osal_systrace_c(int val, const char *log)
 {
+#ifdef CONFIG_MTK_SCHED_TRACERS
 	osal_systrace_prepare();
 	preempt_disable();
 	KERNEL_event_trace_printk(mark_addr, "C|%d|%s|%d\n", g_pid, log, val);
 	preempt_enable();
+#endif
 }
 
 void osal_systrace_major_b(const char *fmt, ...)

@@ -85,7 +85,9 @@ unsigned long long fpsgo_get_time(void)
 
 uint32_t fpsgo_systrace_mask;
 
+#ifdef CONFIG_MTK_SCHED_TRACERS
 static unsigned long __read_mostly mark_addr;
+#endif
 
 #define GENERATE_STRING(name, unused) #name
 static const char * const mask_string[] = {
@@ -94,6 +96,7 @@ static const char * const mask_string[] = {
 
 static int fpsgo_update_tracemark(void)
 {
+#ifdef CONFIG_MTK_SCHED_TRACERS
 	if (mark_addr)
 		return 1;
 
@@ -103,11 +106,16 @@ static int fpsgo_update_tracemark(void)
 		return 0;
 
 	return 1;
+#else
+	return 0;
+#endif
 }
 
 static noinline int tracing_mark_write(const char *buf)
 {
+#ifdef CONFIG_MTK_SCHED_TRACERS
 	trace_printk(buf);
+#endif
 	return 0;
 }
 

@@ -58,7 +58,9 @@
 #endif
 
 /* MET: define to enable MET*/
+#ifdef CONFIG_MTK_SCHED_TRACERS
 #define ISP_MET_READY
+#endif /* CONFIG_MTK_SCHED_TRACERS */
 
 /* Clkmgr is not ready in early porting, en/disable clock by hardcode */
 #ifdef CONFIG_FPGA_EARLY_PORTING

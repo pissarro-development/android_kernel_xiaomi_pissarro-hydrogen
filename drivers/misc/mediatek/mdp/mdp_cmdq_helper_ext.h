@@ -166,17 +166,22 @@ do {if (1) mmprofile_log_ex(args); } while (0);	\
 #define CMDQ_PROF_MMP(args...)
 #endif
 
-/* CMDQ FTRACE */
+#ifdef CONFIG_MTK_SCHED_TRACERS
+#define cmdq_systrace(fmt, args...) \
+	event_trace_printk(cmdq_get_tracing_mark(), fmt, ##args)
+#else
+#define cmdq_systrace(fmt, args...)	no_printk(fmt, ##args)
+#endif
+
 #define CMDQ_TRACE_FORCE_BEGIN(fmt, args...) do { \
 	preempt_disable(); \
-	event_trace_printk(cmdq_get_tracing_mark(), \
-		"B|%d|"fmt, current->tgid, ##args); \
+	cmdq_systrace("B|%d|"fmt, current->tgid, ##args); \
 	preempt_enable();\
 } while (0)
 
 #define CMDQ_TRACE_FORCE_END() do { \
 	preempt_disable(); \
-	event_trace_printk(cmdq_get_tracing_mark(), "E\n"); \
+	cmdq_systrace("E\n"); \
 	preempt_enable(); \
 } while (0)
 

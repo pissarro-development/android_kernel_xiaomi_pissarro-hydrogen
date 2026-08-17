@@ -15,10 +15,13 @@
 #define EARA_THRM_SYSFS_DIR_NAME "eara_thermal"
 
 struct kobject *thrm_kobj;
+#ifdef CONFIG_MTK_SCHED_TRACERS
 static unsigned long __read_mostly mark_addr;
+#endif
 
 static int eara_thrm_update_tracemark(void)
 {
+#ifdef CONFIG_MTK_SCHED_TRACERS
 	if (mark_addr)
 		return 1;
 
@@ -28,6 +31,9 @@ static int eara_thrm_update_tracemark(void)
 		return 0;
 
 	return 1;
+#else
+	return 0;
+#endif
 }
 
 void eara_thrm_systrace(pid_t pid, int val, const char *fmt, ...)
@@ -50,7 +56,9 @@ void eara_thrm_systrace(pid_t pid, int val, const char *fmt, ...)
 	va_end(args);
 
 	preempt_disable();
+#ifdef CONFIG_MTK_SCHED_TRACERS
 	event_trace_printk(mark_addr, "C|%d|%s|%d\n", pid, log, val);
+#endif
 	preempt_enable();
 }
 

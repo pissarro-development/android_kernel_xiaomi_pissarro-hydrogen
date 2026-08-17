@@ -14,6 +14,8 @@
 #ifndef __MTK_DRM_TRACE__
 #define __MTK_DRM_TRACE__
 
+#include <linux/printk.h>
+
 #include "mtk_drm_ddp_comp.h"
 
 #define DRM_TRACE_ID 0xFFFF0000
@@ -25,11 +27,18 @@ extern int hwc_pid;
 
 /* MTK_DRM FTRACE */
 extern bool g_trace_log;
+
+#ifdef CONFIG_MTK_SCHED_TRACERS
+#define mtk_drm_systrace(fmt, args...) \
+	event_trace_printk(mtk_drm_get_tracing_mark(), fmt, ##args)
+#else
+#define mtk_drm_systrace(fmt, args...)	no_printk(fmt, ##args)
+#endif
+
 #define mtk_drm_trace_begin(fmt, args...) do { \
 	if (g_trace_log) { \
 		preempt_disable(); \
-		event_trace_printk(mtk_drm_get_tracing_mark(), \
-			"B|%d|"fmt"\n", current->tgid, ##args); \
+		mtk_drm_systrace("B|%d|"fmt"\n", current->tgid, ##args); \
 		preempt_enable();\
 	} \
 } while (0)
@@ -37,7 +46,7 @@ extern bool g_trace_log;
 #define mtk_drm_trace_end() do { \
 	if (g_trace_log) { \
 		preempt_disable(); \
-		event_trace_printk(mtk_drm_get_tracing_mark(), "E\n"); \
+		mtk_drm_systrace("E\n"); \
 		preempt_enable(); \
 	} \
 } while (0)
@@ -45,8 +54,8 @@ extern bool g_trace_log;
 #define mtk_drm_trace_async_begin(fmt, args...) do { \
 		if (g_trace_log) { \
 			preempt_disable(); \
-			event_trace_printk(mtk_drm_get_tracing_mark(), \
-				"S|%d|"fmt"\n", current->tgid, ##args); \
+			mtk_drm_systrace("S|%d|"fmt"\n", \
+				current->tgid, ##args); \
 			preempt_enable();\
 		} \
 	} while (0)
@@ -54,8 +63,8 @@ extern bool g_trace_log;
 #define mtk_drm_trace_async_end(fmt, args...) do { \
 		if (g_trace_log) { \
 			preempt_disable(); \
-			event_trace_printk(mtk_drm_get_tracing_mark(), \
-				"F|%d|"fmt"\n", current->tgid, ##args); \
+			mtk_drm_systrace("F|%d|"fmt"\n", \
+				current->tgid, ##args); \
 			preempt_enable(); \
 		} \
 	} while (0)
@@ -63,8 +72,7 @@ extern bool g_trace_log;
 #define mtk_drm_trace_c(fmt, args...) do { \
 	if (g_trace_log) { \
 		preempt_disable(); \
-		event_trace_printk(mtk_drm_get_tracing_mark(), \
-			"C|"fmt"\n", ##args); \
+		mtk_drm_systrace("C|"fmt"\n", ##args); \
 		preempt_enable();\
 	} \
 } while (0)

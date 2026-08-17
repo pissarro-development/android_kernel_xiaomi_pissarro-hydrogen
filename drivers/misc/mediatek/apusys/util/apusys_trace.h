@@ -23,10 +23,14 @@
 #undef TRACE_PUT
 #endif
 
+#ifdef CONFIG_MTK_SCHED_TRACERS
 #define TRACE_PUTS(p) \
 	do { \
 		trace_puts(p);; \
 	} while (0)
+#else
+#define TRACE_PUTS(p)	do { (void)(p); } while (0)
+#endif
 
 void trace_tag_begin(const char *format, ...);
 void trace_tag_end(void);

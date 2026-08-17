@@ -26,8 +26,17 @@
 #include <linux/string.h>
 #include <linux/topology.h>
 #include "mtk_ppm_internal.h"
-#include <trace/events/mtk_events.h>
 #include <linux/of.h>
+
+/*==============================================================*/
+/* ftrace events                                                */
+/*==============================================================*/
+#if !defined(NO_MTK_TRACE) && defined(CONFIG_MTK_SCHED_TRACERS)
+#define PPM_FTRACE_EVENTS	1
+#include <trace/events/mtk_events.h>
+#else
+#define PPM_FTRACE_EVENTS	0
+#endif
 
 /*==============================================================*/
 /* Local Macros                                                 */
@@ -617,6 +626,24 @@ static void ppm_main_log_print(unsigned int policy_mask,
 	prev_log_time = cur_time;
 }
 
+#if PPM_FTRACE_EVENTS
+static inline void ppm_trace_user_setting(struct ppm_policy_data *policy)
+{
+	int idx;
+
+	for (idx = 0; idx < policy->req.cluster_num; idx++) {
+		trace_ppm_user_setting(
+			policy->policy,
+			idx,
+			policy->req.limit[idx].min_cpufreq_idx,
+			policy->req.limit[idx].max_cpufreq_idx
+		);
+	}
+}
+#else
+static inline void ppm_trace_user_setting(struct ppm_policy_data *policy) { }
+#endif
+
 int mt_ppm_main(void)
 {
 	struct ppm_policy_data *pos;
@@ -650,21 +677,12 @@ int mt_ppm_main(void)
 	list_for_each_entry(pos, &ppm_main_info.policy_list, link) {
 		if ((pos->is_activated)
 			&& pos->update_limit_cb) {
-			int idx;
-
 			ppm_lock(&pos->lock);
 			policy_mask |= 1 << pos->policy;
 			pos->update_limit_cb();
 			pos->is_limit_updated = true;
 
-			for (idx = 0; idx < pos->req.cluster_num; idx++) {
-				trace_ppm_user_setting(
-					pos->policy,
-					idx,
-					pos->req.limit[idx].min_cpufreq_idx,
-					pos->req.limit[idx].max_cpufreq_idx
-				);
-			}
+			ppm_trace_user_setting(pos);
 
 			ppm_unlock(&pos->lock);
 		}
@@ -710,7 +728,7 @@ int mt_ppm_main(void)
 				);
 		}
 
-#ifndef NO_MTK_TRACE
+#if PPM_FTRACE_EVENTS
 		trace_ppm_update(policy_mask,
 			ppm_main_info.min_power_budget,
 				c_req->root_cluster, buf);

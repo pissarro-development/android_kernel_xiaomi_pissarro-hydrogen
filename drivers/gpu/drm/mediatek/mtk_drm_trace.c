@@ -37,8 +37,7 @@ unsigned long mtk_drm_get_tracing_mark(void)
 static void drm_print_trace(const char *tag, int value)
 {
 	preempt_disable();
-	event_trace_printk(mtk_drm_get_tracing_mark(), "C|%d|%s|%d\n",
-		DRM_TRACE_ID, tag, value);
+	mtk_drm_systrace("C|%d|%s|%d\n", DRM_TRACE_ID, tag, value);
 	preempt_enable();
 }
 
@@ -55,10 +54,8 @@ void drm_trace_tag_end(const char *tag)
 void drm_trace_tag_mark(const char *tag)
 {
 	preempt_disable();
-	event_trace_printk(mtk_drm_get_tracing_mark(), "C|%d|%s|%d\n",
-		DRM_TRACE_ID, tag, 1);
-	event_trace_printk(mtk_drm_get_tracing_mark(), "C|%d|%s|%d\n",
-		DRM_TRACE_ID, tag, 0);
+	mtk_drm_systrace("C|%d|%s|%d\n", DRM_TRACE_ID, tag, 1);
+	mtk_drm_systrace("C|%d|%s|%d\n", DRM_TRACE_ID, tag, 0);
 	preempt_enable();
 }
 

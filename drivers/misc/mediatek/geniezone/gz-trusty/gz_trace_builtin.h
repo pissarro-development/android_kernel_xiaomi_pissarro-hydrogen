@@ -7,7 +7,9 @@
 #ifndef _GZ_TRACE_BUILTIN_H_
 #define _GZ_TRACE_BUILTIN_H_
 
-#if IS_ENABLED(CONFIG_FTRACE)
+#include <linux/printk.h>
+
+#if IS_ENABLED(CONFIG_FTRACE) && IS_ENABLED(CONFIG_MTK_SCHED_TRACERS)
 
 #include <linux/kallsyms.h>
 #include <linux/trace_events.h>
@@ -100,6 +102,8 @@ static unsigned long __read_mostly gz_trusty_tracing_writer;
 
 #define GZ_TRUSTY_ASYNC_TRACE_END(cookie, fmt, args...) do { \
 } while (0)
+
+#define GZ_TRUSTY_TRACE_INJECTION(fmt, args...) no_printk(fmt, ##args)
 
 #endif /* CONFIG_FTRACE */
 

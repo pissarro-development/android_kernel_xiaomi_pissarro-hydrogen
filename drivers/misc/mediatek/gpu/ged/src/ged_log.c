@@ -1205,7 +1205,7 @@ void ged_log_trace_begin(char *name)
 {
 	if (ged_log_trace_enable) {
 		__mt_update_tracing_mark_write_addr();
-#ifdef ENABLE_GED_SYSTRACE_UTIL
+#if defined(ENABLE_GED_SYSTRACE_UTIL) && defined(CONFIG_MTK_SCHED_TRACERS)
 		preempt_disable();
 		event_trace_printk(tracing_mark_write_addr,
 			"B|%d|%s\n", current->tgid, name);
@@ -1218,7 +1218,7 @@ void ged_log_trace_end(void)
 {
 	if (ged_log_trace_enable) {
 		__mt_update_tracing_mark_write_addr();
-#ifdef ENABLE_GED_SYSTRACE_UTIL
+#if defined(ENABLE_GED_SYSTRACE_UTIL) && defined(CONFIG_MTK_SCHED_TRACERS)
 		preempt_disable();
 		event_trace_printk(tracing_mark_write_addr, "E\n");
 		preempt_enable();
@@ -1230,7 +1230,7 @@ void ged_log_trace_counter(char *name, int count)
 {
 	if (ged_log_trace_enable) {
 		__mt_update_tracing_mark_write_addr();
-#ifdef ENABLE_GED_SYSTRACE_UTIL
+#if defined(ENABLE_GED_SYSTRACE_UTIL) && defined(CONFIG_MTK_SCHED_TRACERS)
 		preempt_disable();
 		event_trace_printk(tracing_mark_write_addr,
 			"C|5566|%s|%d\n", name, count);
@@ -1248,7 +1248,8 @@ void ged_log_perf_trace_counter(char *name, long long count, int pid,
  * event_trace_printk cause build error in gki flavor, so we also check
  * CONFIG_MTK_GPU_SUPPORT=y
  */
-#if (defined(CONFIG_EVENT_TRACING) && defined(CONFIG_MTK_GPU_SUPPORT))
+#if (defined(CONFIG_EVENT_TRACING) && defined(CONFIG_MTK_GPU_SUPPORT) && \
+	defined(CONFIG_MTK_SCHED_TRACERS))
 		preempt_disable();
 		event_trace_printk(tracing_mark_write_addr,
 			"C|%d|%s|%lld|%llu|%lu\n", pid,

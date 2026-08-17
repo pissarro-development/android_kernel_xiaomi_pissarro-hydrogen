@@ -12,7 +12,9 @@
  *  Copyright (C) 2004 Nadia Yvette Chambers
  */
 
+#ifdef CONFIG_MTK_SCHED_TRACERS
 #define DEBUG 1
+#endif
 
 #include <linux/ring_buffer.h>
 #include <generated/utsrelease.h>
@@ -51,6 +53,12 @@
 
 #ifdef CONFIG_MTK_SCHED_TRACERS
 #include "mtk_ftrace.h"
+/*
+ * This is the only place the mtk_events tracepoints are instantiated. Every
+ * in-tree user (ppm_v3, irqdesc, cm_mgr, slbc, swpm, ...) guards its
+ * trace_*() calls on CONFIG_MTK_SCHED_TRACERS, so dropping this would turn
+ * flipping the option back on into a link failure rather than a rebuild.
+ */
 #define CREATE_TRACE_POINTS
 #include <trace/events/mtk_events.h>
 EXPORT_TRACEPOINT_SYMBOL(gpu_freq);
